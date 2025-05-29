@@ -1,7 +1,6 @@
 #if !defined(HTTPHEADER_H)
 #define HTTPHEADER_H
 
-#include "../utils/str.hpp"
 #include <iostream>
 #include <map>
 
@@ -76,16 +75,15 @@ enum class HttpRequestTypeEnum
   NoRequest,
 };
 
-using namespace rs::util;
 struct HttpHeader
 {
   HttpHeaderEnum name;
-  Str str_repr;
-  Str value;
+  std::string str_repr;
+  std::string value;
 
   HttpHeader ();
-  HttpHeader (Str _StrRepr, Str _Value);
-  HttpHeader (HttpHeaderEnum _Name, Str _Value);
+  HttpHeader (std::string _StrRepr, std::string _Value);
+  HttpHeader (HttpHeaderEnum _Name, std::string _Value);
 
   bool
   validate ()
@@ -102,14 +100,15 @@ struct HttpHeader
 struct HttpRequestType
 {
   HttpRequestTypeEnum type;
-  Str str_repr; // String representation like "GET", "POST"
-  Str url;      // Request URL or path
-  Str version;  // HTTP version (e.g., "HTTP/1.1")
+  std::string str_repr; // String representation like "GET", "POST"
+  std::string url;      // Request URL or path
+  std::string version;  // HTTP version (e.g., "HTTP/1.1")
 
   HttpRequestType ();
-  HttpRequestType (Str _StrRepr, Str _Url, Str _Version = "HTTP/1.1");
-  HttpRequestType (HttpRequestTypeEnum _Type, Str _Url,
-                   Str _Version = "HTTP/1.1");
+  HttpRequestType (std::string _StrRepr, std::string _Url,
+                   std::string _Version = "HTTP/1.1");
+  HttpRequestType (HttpRequestTypeEnum _Type, std::string _Url,
+                   std::string _Version = "HTTP/1.1");
 
   bool
   validate ()
@@ -126,14 +125,14 @@ struct HttpRequestType
 struct HttpRequest
 {
   HttpRequestType request_type;
-  Vec<HttpHeader> headers;
+  std::vector<HttpHeader> headers;
   std::map<HttpHeaderEnum, HttpHeader> head_map;
-  Str body;
+  std::string body;
 
   HttpRequest ();
-  HttpRequest (HttpRequestType _RequestType, Str _Body = "");
-  HttpRequest (HttpRequestType _RequestType, Vec<HttpHeader> _Headers,
-               Str _Body = "");
+  HttpRequest (HttpRequestType _RequestType, std::string _Body = "");
+  HttpRequest (HttpRequestType _RequestType, std::vector<HttpHeader> _Headers,
+               std::string _Body = "");
 
   bool
   validate ()
@@ -167,10 +166,10 @@ struct HttpRequest
   ~HttpRequest () {}
 };
 
-HttpHeader parse_header (Str);
-HttpRequestTypeEnum parse_request_type_enum (Str);
-HttpRequestType parse_request_type (Str);
-HttpRequest parse_request (Vec<Str> &);
+HttpHeader parse_header (std::string);
+HttpRequestTypeEnum parse_request_type_enum (std::string);
+HttpRequestType parse_request_type (std::string);
+HttpRequest parse_request (std::vector<std::string> &);
 } // namespace rs::block
 
 #endif // HTTPHEADER_H

@@ -3,5 +3,6 @@
 
 #include "header.hpp"
 #include "server/server.hpp"
+#include "json/json.hpp"
 
 #endif // BLOCKRS_H

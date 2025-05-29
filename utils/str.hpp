@@ -17,9 +17,15 @@ public:
   Str () : v (Vec<char> ()) {};
   ~Str () {};
 
-  Str (const Str &rhs) { v = rhs.v; }
+  Str (const Str &rhs) : v (rhs.v) {}
   Str (Str &&rhs) noexcept : v (std::move (rhs.v)) {}
-  Str (char &rhs) { v.push_back (rhs); }
+  Str (char rhs) { v.push_back (rhs); }
+  Str (char *rhs)
+  {
+    size_t rl = strlen (rhs);
+    for (size_t i = 0; i < rl; i++)
+      v.push_back (rhs[i]);
+  }
   //   Str (const Str &rhs) { v = std::move (rhs.v); }
 
   int find (char);
@@ -37,14 +43,16 @@ public:
   Str &
   operator= (const Str &rhs)
   {
-    v = rhs.v;
+    if (this != &rhs)
+      v = rhs.v;
     return *this;
   }
 
   Str &
-  operator= (const Str &&rhs)
+  operator= (Str &&rhs)
   {
-    v = std::move (rhs.v);
+    if (this != &rhs)
+      v = std::move (rhs.v);
     return *this;
   }
 
@@ -114,7 +122,7 @@ public:
 
     for (char c : v)
       *p++ = c;
-    *p++ = '\0';
+    *p = '\0';
 
     return s;
   }
@@ -125,10 +133,16 @@ public:
     return v.get ();
   }
 
+  Vec<char> &
+  get_vec ()
+  {
+    return v;
+  }
+
   friend std::ostream &
   operator<< (std::ostream &_Out, Str &rhs)
   {
-    for (auto c : rhs.v)
+    for (char c : rhs.v)
       _Out << c;
 
     return _Out;
@@ -170,7 +184,6 @@ public:
 
 //   return _Out;
 // }
-
-} // namespace rs::util
+}
 
 #endif // STR_H

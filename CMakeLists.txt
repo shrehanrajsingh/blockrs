@@ -26,6 +26,8 @@ add_library(blockrs
     utils/vec.hpp utils/vec.cpp
     utils/str.hpp utils/str.cpp
 
+    json/json.hpp json/json.cpp
+
     server/server.hpp server/server.cpp
     server/classes.hpp server/classes.cpp
     server/httpheader.hpp server/httpheader.cpp

@@ -271,15 +271,17 @@ Vec<T>::operator= (Vec<T> &&rhs) noexcept
 {
   if (this != &rhs)
     {
-      delete[] vals;
+      //   vals = rhs.vals;
+      //   size = rhs.size;
+      //   cap = rhs.cap;
 
-      vals = rhs.vals;
-      size = rhs.size;
-      cap = rhs.cap;
+      //   rhs.vals = nullptr;
+      //   rhs.size = 0;
+      //   rhs.cap = 0;
 
-      rhs.vals = nullptr;
-      rhs.size = 0;
-      rhs.cap = 0;
+      std::swap (vals, rhs.vals);
+      std::swap (size, rhs.size);
+      std::swap (cap, rhs.cap);
     }
   return *this;
 }

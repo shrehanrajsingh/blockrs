@@ -2,8 +2,8 @@
 
 namespace rs::block
 {
-using namespace rs::util;
-static Vec<std::pair<HttpHeaderEnum, Str>> ntable
+// using namespace rs::util;
+static std::vector<std::pair<HttpHeaderEnum, std::string>> ntable
     = { { HttpHeaderEnum::Accept, "Accept" },
         { HttpHeaderEnum::AcceptCharset, "Accept-Charset" },
         { HttpHeaderEnum::AcceptEncoding, "Accept-Encoding" },
@@ -56,7 +56,7 @@ static Vec<std::pair<HttpHeaderEnum, Str>> ntable
         { HttpHeaderEnum::Custom, "Custom" },
         { HttpHeaderEnum::NoHeader, "" } };
 
-static Vec<std::pair<HttpRequestTypeEnum, Str>> ttable
+static std::vector<std::pair<HttpRequestTypeEnum, std::string>> ttable
     = { { HttpRequestTypeEnum::Get, "GET" },
         { HttpRequestTypeEnum::Post, "POST" },
         { HttpRequestTypeEnum::Put, "PUT" },
@@ -73,7 +73,7 @@ HttpHeader::HttpHeader ()
 {
 }
 
-HttpHeader::HttpHeader (Str _StrRepr, Str _Value)
+HttpHeader::HttpHeader (std::string _StrRepr, std::string _Value)
 {
   /* check if it is a valid header */
   bool is_valid = false;
@@ -97,7 +97,7 @@ HttpHeader::HttpHeader (Str _StrRepr, Str _Value)
     }
 }
 
-HttpHeader::HttpHeader (HttpHeaderEnum _Name, Str _Value)
+HttpHeader::HttpHeader (HttpHeaderEnum _Name, std::string _Value)
 {
   bool is_valid = false;
   for (auto &&i : ntable)
@@ -133,7 +133,7 @@ HttpHeader::operator!= (const HttpHeader &rhs)
 }
 
 HttpHeader
-parse_header (Str h)
+parse_header (std::string h)
 {
   int colon_idx = h.find (':');
   if (colon_idx == -1)
@@ -141,8 +141,8 @@ parse_header (Str h)
       return HttpHeader ();
     }
 
-  Str h_name = h.substr (0, colon_idx);
-  Str h_value = h.substr (colon_idx + 1, h.size ());
+  std::string h_name = h.substr (0, colon_idx);
+  std::string h_value = h.substr (colon_idx + 1, h.size ());
 
   if (h_value.find (' ') == 0)
     {
@@ -158,7 +158,8 @@ HttpRequestType::HttpRequestType ()
 {
 }
 
-HttpRequestType::HttpRequestType (Str _StrRepr, Str _Url, Str _Version)
+HttpRequestType::HttpRequestType (std::string _StrRepr, std::string _Url,
+                                  std::string _Version)
     : url (_Url), version (_Version)
 {
   /* check if it is a valid request type */
@@ -181,8 +182,8 @@ HttpRequestType::HttpRequestType (Str _StrRepr, Str _Url, Str _Version)
     }
 }
 
-HttpRequestType::HttpRequestType (HttpRequestTypeEnum _Type, Str _Url,
-                                  Str _Version)
+HttpRequestType::HttpRequestType (HttpRequestTypeEnum _Type, std::string _Url,
+                                  std::string _Version)
     : type (_Type), url (_Url), version (_Version)
 {
   bool is_valid = false;
@@ -216,10 +217,10 @@ HttpRequestType::operator!= (const HttpRequestType &rhs)
 }
 
 HttpRequestTypeEnum
-parse_request_type_enum (Str s)
+parse_request_type_enum (std::string s)
 {
   int space_pos = s.find (' ');
-  Str method = (space_pos != -1) ? s.substr (0, space_pos) : s;
+  std::string method = (space_pos != -1) ? s.substr (0, space_pos) : s;
 
   for (const auto &entry : ttable)
     {
@@ -232,7 +233,7 @@ parse_request_type_enum (Str s)
 }
 
 HttpRequestType
-parse_request_type (Str s)
+parse_request_type (std::string s)
 {
   int first_space = s.find (' ');
   if (first_space == -1)
@@ -247,21 +248,21 @@ parse_request_type (Str s)
     }
 
   HttpRequestTypeEnum rte = parse_request_type_enum (s);
-  Str url = s.substr (first_space + 1, second_space - first_space - 1);
-  Str version = s.substr (second_space + 1, s.size ());
+  std::string url = s.substr (first_space + 1, second_space - first_space - 1);
+  std::string version = s.substr (second_space + 1, s.size ());
 
   return HttpRequestType (rte, url, version);
 }
 
 HttpRequest::HttpRequest () : request_type (HttpRequestType ()), body ("") {}
 
-HttpRequest::HttpRequest (HttpRequestType _RequestType, Str _Body)
+HttpRequest::HttpRequest (HttpRequestType _RequestType, std::string _Body)
     : request_type (_RequestType), body (_Body)
 {
 }
 
 HttpRequest::HttpRequest (HttpRequestType _RequestType,
-                          Vec<HttpHeader> _Headers, Str _Body)
+                          std::vector<HttpHeader> _Headers, std::string _Body)
     : request_type (_RequestType), headers (_Headers), body (_Body)
 {
   map_headers ();
@@ -277,7 +278,7 @@ HttpRequest::map_headers ()
 bool
 HttpRequest::operator== (const HttpRequest &rhs)
 {
-  if (headers.get_size () != rhs.headers.get_size ())
+  if (headers.size () != rhs.headers.size ())
     return false;
 
   bool request_match = request_type == rhs.request_type;
@@ -286,10 +287,10 @@ HttpRequest::operator== (const HttpRequest &rhs)
   if (!request_match || !body_match)
     return false;
 
-  for (std::size_t i = 0; i < headers.get_size (); ++i)
+  for (std::size_t i = 0; i < headers.size (); ++i)
     {
       bool found_match = false;
-      for (std::size_t j = 0; j < rhs.headers.get_size (); ++j)
+      for (std::size_t j = 0; j < rhs.headers.size (); ++j)
         {
           if (headers[i] == rhs.headers[j]
               && headers[i].value == rhs.headers[j].value)
@@ -312,14 +313,14 @@ HttpRequest::operator!= (const HttpRequest &rhs)
 }
 
 HttpRequest
-parse_request (Vec<Str> &rhs)
+parse_request (std::vector<std::string> &rhs)
 {
-  if (rhs.get_size () == 0)
+  if (rhs.size () == 0)
     {
       return HttpRequest ();
     }
 
-  Str request_line = rhs[0];
+  std::string request_line = rhs[0];
   int first_space = request_line.find (' ');
   if (first_space == -1)
     {
@@ -333,15 +334,16 @@ parse_request (Vec<Str> &rhs)
     }
 
   HttpRequestTypeEnum rte = parse_request_type_enum (request_line);
-  Str url
+  std::string url
       = request_line.substr (first_space + 1, second_space - first_space - 1);
-  Str version = request_line.substr (second_space + 1, request_line.size ());
+  std::string version
+      = request_line.substr (second_space + 1, request_line.size ());
 
   HttpRequestType req_type (rte, url, version);
 
-  Vec<HttpHeader> headers;
+  std::vector<HttpHeader> headers;
   size_t i = 1;
-  for (; i < rhs.get_size (); ++i)
+  for (; i < rhs.size (); ++i)
     {
       if (rhs[i].size () == 1 || rhs[i].empty ())
         {
@@ -352,8 +354,8 @@ parse_request (Vec<Str> &rhs)
       int colon_idx = rhs[i].find (':');
       if (colon_idx != -1)
         {
-          Str h_name = rhs[i].substr (0, colon_idx);
-          Str h_value = rhs[i].substr (colon_idx + 1, rhs[i].size ());
+          std::string h_name = rhs[i].substr (0, colon_idx);
+          std::string h_value = rhs[i].substr (colon_idx + 1, rhs[i].size ());
 
           if (h_value.find (' ') == 0)
             {
@@ -368,14 +370,14 @@ parse_request (Vec<Str> &rhs)
         }
     }
 
-  //   for (size_t j = 0; j < headers.get_size (); ++j)
+  //   for (size_t j = 0; j < headers.size(); ++j)
   //     {
   //       std::cout << "Header: " << headers[j].str_repr << " = "
   //                 << headers[j].value << std::endl;
   //     }
 
-  Str body;
-  for (; i < rhs.get_size (); ++i)
+  std::string body;
+  for (; i < rhs.size (); ++i)
     {
       if (!body.empty ())
         body += "\n";

@@ -204,7 +204,7 @@ HttpServer::handle_client (int client_fd)
       //     }
       //   else
       //     {
-      Vec<Str> lines;
+      std::vector<std::string> lines;
       lines.push_back ("");
 
       char *bp = (char *)buffer;
@@ -237,8 +237,16 @@ HttpServer::handle_client (int client_fd)
           HttpHeader content_length
               = hr.get_header (HttpHeaderEnum::ContentLength);
 
-          Str vs = content_length.value;
-          int cl = atoi (vs.trim ().get_internal_buffer ());
+          std::string vs = content_length.value;
+          while (vs.front () == '\n' || vs.front () == '\t'
+                 || vs.front () == '\r' || vs.front () == ' ')
+            vs.erase (0, 1);
+
+          while (vs.back () == '\n' || vs.back () == '\t' || vs.back () == '\r'
+                 || vs.back () == ' ')
+            vs.pop_back ();
+
+          int cl = atoi (vs.c_str ());
           int dif = bp - (char *)buffer;
 
           if (dif + cl > buf_size)
@@ -265,13 +273,14 @@ HttpServer::handle_client (int client_fd)
                   total_read += bytes_read;
                 }
 
-              hr.body = Str (std::string (rem_buf, total_read).c_str ());
+              hr.body
+                  = std::string (std::string (rem_buf, total_read).c_str ());
               delete[] rem_buf;
             }
           else
             {
               /* entire body is in buffer */
-              hr.body = Str (bp);
+              hr.body = std::string (bp);
             }
         }
       catch (const std::exception &e)

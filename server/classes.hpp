@@ -21,18 +21,18 @@
 #include <unistd.h>
 #endif
 
-#include "../utils/vec.hpp"
+// #include "../utils/vec.hpp"
 
 namespace rs::block
 {
-using namespace rs::util;
+// using namespace rs::util;
 
 class _Server_Base
 {
 protected:
   std::atomic<bool> is_running;
-  Vec<int> client_fds;
-  Vec<std::thread> threads;
+  std::vector<int> client_fds;
+  std::vector<std::thread> threads;
 
   std::mutex cout_mutex;
   int fd;
@@ -51,7 +51,7 @@ public:
 
   virtual void setup_socket () {};
 
-  inline Vec<int> &
+  inline std::vector<int> &
   get_client_fds ()
   {
     return client_fds;
