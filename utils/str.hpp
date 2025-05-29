@@ -22,6 +22,18 @@ public:
   Str (char &rhs) { v.push_back (rhs); }
   //   Str (const Str &rhs) { v = std::move (rhs.v); }
 
+  int find (char);
+  int find (char, int);
+  int find (char *);
+
+  bool
+  empty ()
+  {
+    return v.get_size () == 0;
+  }
+
+  Str substr (size_t, size_t);
+
   Str &
   operator= (const Str &rhs)
   {
@@ -133,10 +145,21 @@ public:
     return res;
   }
 
+  void
+  clear ()
+  {
+    v.clear ();
+  }
+
+  Str &trim ();
+
   friend Str operator+ (const Str &, const char);
   friend bool operator== (const Str &, const Str &);
   friend bool operator== (const Str &, char *);
   friend bool operator== (const Str &, char);
+  friend Str &operator+= (Str &, const char);
+  friend Str &operator+= (Str &, const char *);
+  friend Str &operator+= (Str &, Str &);
 };
 
 // std::ostream &

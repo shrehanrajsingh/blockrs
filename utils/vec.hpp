@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <memory>
 
 #define DEFAULT_VEC_CAP ((size_t)32)
 
@@ -295,7 +296,15 @@ Vec<T>::resize (size_t _Cap)
   vals = new T[cap];
 
   for (size_t i = 0; i < size; i++)
-    vals[i] = vp[i];
+    {
+      /**
+       * std::thread defined operator= as a
+       * private function.
+       * So we use std::move to bypass
+       * any data hiding
+       */
+      vals[i] = std::move (vp[i]);
+    }
 
   delete[] vp;
 }
