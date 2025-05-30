@@ -7,6 +7,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 enable_testing()
 
 add_subdirectory(tests)
+add_subdirectory(lib/secp256k1)
+
+include_directories(
+    lib/secp256k1/include
+    lib/tiny_sha3
+)
 
 if(UNIX)
     set(SERVER_SOURCES 
@@ -33,5 +39,14 @@ add_library(blockrs
     server/httpheader.hpp server/httpheader.cpp
     ${SERVER_SOURCES}
 
+    lib/tiny_sha3/sha3.h lib/tiny_sha3/sha3.c
+
+    blockchain/node.hpp blockchain/node.cpp
+    blockchain/blocknetwork.hpp blockchain/blocknetwork.cpp
+    blockchain/transaction.hpp blockchain/transaction.cpp
+    blockchain/wallet.hpp blockchain/wallet.cpp
+
     blockrs.hpp blockrs.cpp)
+
+target_link_libraries(blockrs secp256k1)
 

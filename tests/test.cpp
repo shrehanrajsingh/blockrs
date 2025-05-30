@@ -93,13 +93,34 @@ test3 ()
   std::cout << j.to_string () << std::endl;
 }
 
+void
+test4 ()
+{
+  using namespace rs::block;
+  using namespace rs::json;
+
+  Wallet w[10];
+
+  for (int i = 0; i < 10; i++)
+    {
+      std::cout << "Private key: 0x"
+                << to_hex (w[i].get_private_key ().data (), 32) << '\n';
+      std::cout << "Public key: 0x"
+                << to_hex (w[i].get_public_key ().data (),
+                           w[i].get_public_key ().size ())
+                << '\n';
+      std::cout << "Address: 0x" << to_hex (w[i].get_address ().data (), 20)
+                << '\n';
+    }
+}
+
 int
 main (int argc, char const *argv[])
 {
   using namespace rs::block;
   using namespace rs::util;
 
-  TEST (1);
+  TEST (4);
 
   return 0;
 }

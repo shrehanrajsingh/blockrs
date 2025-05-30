@@ -5,4 +5,9 @@
 #include "server/server.hpp"
 #include "json/json.hpp"
 
+#include "blockchain/blocknetwork.hpp"
+#include "blockchain/node.hpp"
+#include "blockchain/transaction.hpp"
+#include "blockchain/wallet.hpp"
+
 #endif // BLOCKRS_H
