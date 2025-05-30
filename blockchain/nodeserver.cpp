@@ -315,4 +315,22 @@ NodeServer::add_routes ()
   add_route ("/info", { "GET" },
              [this] (HttpRequest req) { return this->route_info (req); });
 }
+
+void
+NodeServer::set_node (Node *n)
+{
+  if (node != nullptr)
+    {
+      std::string url = node->get_ns_url ();
+      node->set_ns_url ("");
+      node = n;
+      node->set_ns_url (url);
+    }
+  else
+    {
+      node = n;
+      node->set_ns_url (std::string (BKRS_SERVER_URL) + ":"
+                        + std::to_string (get_port ()));
+    }
+}
 } // namespace rs::block

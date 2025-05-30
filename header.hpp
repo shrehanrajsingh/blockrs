@@ -37,6 +37,10 @@
 #define KRS_API
 #endif // KRS_API
 
+#if !defined(BKRS_SERVER_URL)
+#define BKRS_SERVER_URL ("http://127.0.0.1")
+#endif
+
 namespace rs::util
 {
 static void

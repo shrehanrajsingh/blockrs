@@ -42,6 +42,13 @@ public:
 
   void add_routes ();
 
+  void set_node (Node *);
+  inline Node *&
+  get_node ()
+  {
+    return node;
+  }
+
   inline std::vector<RouteInfo> &
   get_routes ()
   {

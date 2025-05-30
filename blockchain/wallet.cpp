@@ -223,4 +223,11 @@ Wallet::verify (const Wallet &w, std::string sig, std::string message)
   return v != 0;
 }
 
+void
+Wallet::sign_transaction (Transaction &t)
+{
+  std::string js = t.to_string_sign ();
+  t.signature = this->sign (js);
+}
+
 } // namespace rs::block

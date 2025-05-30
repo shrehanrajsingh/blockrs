@@ -13,11 +13,11 @@ Transaction::hash ()
   J (j["timestamp"]) = int (time (NULL));
   J (j["from"]) = from;
   J (j["to"]) = to;
-  J (j["value"]) = int (value);
+  J (j["value"]) = value;
   J (j["symbol"]) = symbol;
-  J (j["gas_used"]) = int (gas_used);
-  J (j["gas_price"]) = int (gas_price);
-  J (j["tr_fee"]) = int (tr_fee);
+  J (j["gas_used"]) = gas_used;
+  J (j["gas_price"]) = gas_price;
+  J (j["tr_fee"]) = tr_fee;
   J (j["nonce"]) = int (nonce);
   J (j["input_data"]) = input_data;
   J (j["signature"]) = signature;
@@ -76,5 +76,21 @@ from_string (std::string s)
   t.tr_hash = j["tr_hash"]->as_string ();
 
   return t;
+}
+
+std::string
+Transaction::to_string_sign ()
+{
+  json::json_t j;
+  J (j["nonce"]) = int (nonce);
+  J (j["to"]) = to;
+  J (j["value"]) = value;
+  J (j["gas_fee"]) = gas_price;
+  J (j["data"]) = input_data;
+
+  std::string js = j.to_string ();
+  dbg ("Transaction::to_string_sign(): " << js);
+
+  return js;
 }
 } // namespace rs::block

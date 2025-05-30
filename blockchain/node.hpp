@@ -23,8 +23,8 @@ class Node
   std::string bnt_url; /* url of blockchainnetwork server */
 
 public:
-  Node () : type (NodeTypeEnum::Full) {}
-  Node (NodeTypeEnum _Type) : type (_Type) {}
+  Node () : type (NodeTypeEnum::Full), ns_url (""), bnt_url ("") {}
+  Node (NodeTypeEnum _Type) : type (_Type), ns_url (""), bnt_url ("") {}
   Node (NodeTypeEnum _Type, std::string _NsURL) : type (_Type), ns_url (_NsURL)
   {
   }

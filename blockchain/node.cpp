@@ -12,8 +12,8 @@ Node::to_string ()
 
   J (j["type"]) = int (type);
   J (j["type_str"]) = ntrtable[int (type)];
-  J (j["url"]) = ns_url;
-  J (j["host"]) = bnt_url;
+  J (j["ns_url"]) = ns_url;
+  J (j["bnt_url"]) = bnt_url;
 
   return j.to_string ();
 }

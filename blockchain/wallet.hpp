@@ -3,6 +3,7 @@
 
 #include "../header.hpp"
 #include "../lib/tiny_sha3/sha3.h"
+#include "transaction.hpp"
 #include <secp256k1.h>
 
 #define KECCAK_256_RATE 136
@@ -60,6 +61,8 @@ public:
   std::string sign (std::string);
   static bool verify (const Wallet &_Wallet, std::string _Signature,
                       std::string _Message);
+
+  void sign_transaction (Transaction &);
 
   ~Wallet () {}
 };

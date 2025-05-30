@@ -4,7 +4,7 @@
 #include "../header.hpp"
 #include "../json/json.hpp"
 
-#define GAS_PRICE_DEFAULT 50
+#define GAS_PRICE_DEFAULT 50.0f
 
 namespace rs::block
 {
@@ -48,11 +48,11 @@ struct Transaction
   std::time_t timestamp;
   std::string from;
   std::string to;
-  size_t value;
+  float value;
   std::string symbol;
-  size_t gas_used;
-  size_t gas_price = GAS_PRICE_DEFAULT;
-  size_t tr_fee;
+  float gas_used;
+  float gas_price = GAS_PRICE_DEFAULT;
+  float tr_fee;
   size_t nonce;
   std::string input_data;
   std::string signature;
@@ -61,6 +61,7 @@ struct Transaction
 
   void hash ();
   std::string to_string ();
+  std::string to_string_sign (); /* json of data used for signing */
   static Transaction from_string (std::string); /* json representation */
 
   ~Transaction () {}
