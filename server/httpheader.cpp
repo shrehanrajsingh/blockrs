@@ -68,6 +68,83 @@ static std::vector<std::pair<HttpRequestTypeEnum, std::string>> ttable
         { HttpRequestTypeEnum::Trace, "TRACE" },
         { HttpRequestTypeEnum::NoRequest, "" } };
 
+static std::vector<std::pair<HttpStatusEnum, std::string>> rtable
+    = { { HttpStatusEnum::Continue, "100 Continue" },
+        { HttpStatusEnum::SwitchingProtocols, "101 Switching Protocols" },
+        { HttpStatusEnum::Processing, "102 Processing" },
+        { HttpStatusEnum::EarlyHints, "103 Early Hints" },
+
+        { HttpStatusEnum::OK, "200 OK" },
+        { HttpStatusEnum::Created, "201 Created" },
+        { HttpStatusEnum::Accepted, "202 Accepted" },
+        { HttpStatusEnum::NonAuthoritativeInformation,
+          "203 Non-Authoritative Information" },
+        { HttpStatusEnum::NoContent, "204 No Content" },
+        { HttpStatusEnum::ResetContent, "205 Reset Content" },
+        { HttpStatusEnum::PartialContent, "206 Partial Content" },
+        { HttpStatusEnum::MultiStatus, "207 Multi-Status" },
+        { HttpStatusEnum::AlreadyReported, "208 Already Reported" },
+        { HttpStatusEnum::IMUsed, "226 IM Used" },
+
+        { HttpStatusEnum::MultipleChoices, "300 Multiple Choices" },
+        { HttpStatusEnum::MovedPermanently, "301 Moved Permanently" },
+        { HttpStatusEnum::Found, "302 Found" },
+        { HttpStatusEnum::SeeOther, "303 See Other" },
+        { HttpStatusEnum::NotModified, "304 Not Modified" },
+        { HttpStatusEnum::UseProxy, "305 Use Proxy" },
+        { HttpStatusEnum::TemporaryRedirect, "307 Temporary Redirect" },
+        { HttpStatusEnum::PermanentRedirect, "308 Permanent Redirect" },
+
+        { HttpStatusEnum::BadRequest, "400 Bad Request" },
+        { HttpStatusEnum::Unauthorized, "401 Unauthorized" },
+        { HttpStatusEnum::PaymentRequired, "402 Payment Required" },
+        { HttpStatusEnum::Forbidden, "403 Forbidden" },
+        { HttpStatusEnum::NotFound, "404 Not Found" },
+        { HttpStatusEnum::MethodNotAllowed, "405 Method Not Allowed" },
+        { HttpStatusEnum::NotAcceptable, "406 Not Acceptable" },
+        { HttpStatusEnum::ProxyAuthenticationRequired,
+          "407 Proxy Authentication Required" },
+        { HttpStatusEnum::RequestTimeout, "408 Request Timeout" },
+        { HttpStatusEnum::Conflict, "409 Conflict" },
+        { HttpStatusEnum::Gone, "410 Gone" },
+        { HttpStatusEnum::LengthRequired, "411 Length Required" },
+        { HttpStatusEnum::PreconditionFailed, "412 Precondition Failed" },
+        { HttpStatusEnum::PayloadTooLarge, "413 Payload Too Large" },
+        { HttpStatusEnum::URITooLong, "414 URI Too Long" },
+        { HttpStatusEnum::UnsupportedMediaType, "415 Unsupported Media Type" },
+        { HttpStatusEnum::RangeNotSatisfiable, "416 Range Not Satisfiable" },
+        { HttpStatusEnum::ExpectationFailed, "417 Expectation Failed" },
+        { HttpStatusEnum::ImATeapot, "418 I'm a teapot" },
+        { HttpStatusEnum::MisdirectedRequest, "421 Misdirected Request" },
+        { HttpStatusEnum::UnprocessableEntity, "422 Unprocessable Entity" },
+        { HttpStatusEnum::Locked, "423 Locked" },
+        { HttpStatusEnum::FailedDependency, "424 Failed Dependency" },
+        { HttpStatusEnum::TooEarly, "425 Too Early" },
+        { HttpStatusEnum::UpgradeRequired, "426 Upgrade Required" },
+        { HttpStatusEnum::PreconditionRequired, "428 Precondition Required" },
+        { HttpStatusEnum::TooManyRequests, "429 Too Many Requests" },
+        { HttpStatusEnum::RequestHeaderFieldsTooLarge,
+          "431 Request Header Fields Too Large" },
+        { HttpStatusEnum::UnavailableForLegalReasons,
+          "451 Unavailable For Legal Reasons" },
+
+        { HttpStatusEnum::InternalServerError, "500 Internal Server Error" },
+        { HttpStatusEnum::NotImplemented, "501 Not Implemented" },
+        { HttpStatusEnum::BadGateway, "502 Bad Gateway" },
+        { HttpStatusEnum::ServiceUnavailable, "503 Service Unavailable" },
+        { HttpStatusEnum::GatewayTimeout, "504 Gateway Timeout" },
+        { HttpStatusEnum::HTTPVersionNotSupported,
+          "505 HTTP Version Not Supported" },
+        { HttpStatusEnum::VariantAlsoNegotiates,
+          "506 Variant Also Negotiates" },
+        { HttpStatusEnum::InsufficientStorage, "507 Insufficient Storage" },
+        { HttpStatusEnum::LoopDetected, "508 Loop Detected" },
+        { HttpStatusEnum::NotExtended, "510 Not Extended" },
+        { HttpStatusEnum::NetworkAuthenticationRequired,
+          "511 Network Authentication Required" },
+
+        { HttpStatusEnum::NoStatus, "" } };
+
 HttpHeader::HttpHeader ()
     : name (HttpHeaderEnum::NoHeader), str_repr (""), value ("")
 {
@@ -205,13 +282,13 @@ HttpRequestType::HttpRequestType (HttpRequestTypeEnum _Type, std::string _Url,
 }
 
 bool
-HttpRequestType::operator== (const HttpRequestType &rhs)
+HttpRequestType::operator== (HttpRequestType &rhs)
 {
   return type == rhs.type;
 }
 
 bool
-HttpRequestType::operator!= (const HttpRequestType &rhs)
+HttpRequestType::operator!= (HttpRequestType &rhs)
 {
   return type != rhs.type;
 }
@@ -262,23 +339,16 @@ HttpRequest::HttpRequest (HttpRequestType _RequestType, std::string _Body)
 }
 
 HttpRequest::HttpRequest (HttpRequestType _RequestType,
-                          std::vector<HttpHeader> _Headers, std::string _Body)
-    : request_type (_RequestType), headers (_Headers), body (_Body)
+                          std::map<HttpHeaderEnum, HttpHeader> _Headers,
+                          std::string _Body)
+    : request_type (_RequestType), head_map (_Headers), body (_Body)
 {
-  map_headers ();
-}
-
-void
-HttpRequest::map_headers ()
-{
-  for (HttpHeader &i : headers)
-    head_map[i.name] = i;
 }
 
 bool
-HttpRequest::operator== (const HttpRequest &rhs)
+HttpRequest::operator== (HttpRequest &rhs)
 {
-  if (headers.size () != rhs.headers.size ())
+  if (head_map.size () != rhs.head_map.size ())
     return false;
 
   bool request_match = request_type == rhs.request_type;
@@ -287,19 +357,12 @@ HttpRequest::operator== (const HttpRequest &rhs)
   if (!request_match || !body_match)
     return false;
 
-  for (std::size_t i = 0; i < headers.size (); ++i)
+  for (auto &[key, val] : head_map)
     {
-      bool found_match = false;
-      for (std::size_t j = 0; j < rhs.headers.size (); ++j)
-        {
-          if (headers[i] == rhs.headers[j]
-              && headers[i].value == rhs.headers[j].value)
-            {
-              found_match = true;
-              break;
-            }
-        }
-      if (!found_match)
+      if (rhs.head_map.find (key) != rhs.head_map.end ()
+          && rhs.head_map[key] == val)
+        ;
+      else
         return false;
     }
 
@@ -307,7 +370,7 @@ HttpRequest::operator== (const HttpRequest &rhs)
 }
 
 bool
-HttpRequest::operator!= (const HttpRequest &rhs)
+HttpRequest::operator!= (HttpRequest &rhs)
 {
   return !(*this == rhs);
 }
@@ -341,7 +404,7 @@ parse_request (std::vector<std::string> &rhs)
 
   HttpRequestType req_type (rte, url, version);
 
-  std::vector<HttpHeader> headers;
+  std::map<HttpHeaderEnum, HttpHeader> headers;
   size_t i = 1;
   for (; i < rhs.size (); ++i)
     {
@@ -364,7 +427,8 @@ parse_request (std::vector<std::string> &rhs)
 
           //   std::cout << "Header: " << h_name << " = " << h_value <<
           //   std::endl;
-          headers.push_back (HttpHeader (h_name, h_value));
+          HttpHeader hh (h_name, h_value);
+          headers[hh.name] = hh;
           //   std::cout << "Header: " << headers.back ().str_repr << " = "
           //             << headers.back ().value << std::endl;
         }
@@ -387,4 +451,103 @@ parse_request (std::vector<std::string> &rhs)
 
   return HttpRequest (req_type, headers, body);
 }
+
+HttpResponse::HttpResponse ()
+    : status_code (HttpStatusEnum::NoStatus), status_message (""),
+      version ("HTTP/1.1"), body ("")
+{
+}
+
+HttpResponse::HttpResponse (HttpStatusEnum _StatusCode, std::string _Version,
+                            std::string _Body)
+    : status_code (_StatusCode), version (_Version), body (_Body)
+{
+  for (const auto &entry : rtable)
+    {
+      if (entry.first == _StatusCode)
+        {
+          status_message = entry.second;
+          break;
+        }
+    }
+}
+
+HttpResponse::HttpResponse (HttpStatusEnum _StatusCode,
+                            std::string _StatusMessage, std::string _Version,
+                            std::string _Body)
+    : status_code (_StatusCode), status_message (_StatusMessage),
+      version (_Version), body (_Body)
+{
+}
+
+HttpResponse::HttpResponse (HttpStatusEnum _StatusCode,
+                            std::map<HttpHeaderEnum, HttpHeader> _Headers,
+                            std::string _Version, std::string _Body)
+    : status_code (_StatusCode), head_map (_Headers), version (_Version),
+      body (_Body)
+{
+  for (const auto &entry : rtable)
+    {
+      if (entry.first == _StatusCode)
+        {
+          status_message = entry.second;
+          break;
+        }
+    }
+}
+
+HttpResponse::HttpResponse (HttpStatusEnum _StatusCode,
+                            std::string _StatusMessage,
+                            std::map<HttpHeaderEnum, HttpHeader> _Headers,
+                            std::string _Version, std::string _Body)
+    : status_code (_StatusCode), status_message (_StatusMessage),
+      head_map (_Headers), version (_Version), body (_Body)
+{
+}
+
+void
+HttpResponse::add_body (std::string s)
+{
+  body = s;
+
+  auto it = head_map.find (HttpHeaderEnum::ContentLength);
+  if (it != head_map.end ())
+    {
+      it->second.value = std::to_string (body.size ());
+      return;
+    }
+
+  head_map[HttpHeaderEnum::ContentLength].value
+      = std::to_string (body.size ());
+}
+
+std::string
+HttpResponse::to_string ()
+{
+  std::string result;
+  result += version + " " + status_message + " " + version + "\r\n";
+
+  for (const auto &[key, header] : head_map)
+    {
+      result += header.str_repr + ": " + header.value + "\r\n";
+    }
+
+  result += "\r\n";
+  result += body;
+
+  return result;
+}
+
+std::string
+get_status_message (HttpStatusEnum status_code)
+{
+  for (auto const &[code, repr] : rtable)
+    {
+      if (code == status_code)
+        return repr;
+    }
+
+  return "";
+}
+
 } // namespace rs::block

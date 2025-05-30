@@ -1,13 +1,14 @@
 #if !defined(NW_H)
 #define NW_H
 
+#include "../json/json.hpp"
 #include "../utils/str.hpp"
 #include "classes.hpp"
 #include "httpheader.hpp"
 
 namespace rs::block
 {
-using namespace rs::util;
+using namespace rs::json;
 
 /**
  * IMPORTANT: For Development Use Only
@@ -62,6 +63,7 @@ class HttpServer : public _Server_Base
 private:
   struct sockaddr_in address;
   int addrlen = 0;
+  std::vector<RouteInfo> routes;
 
 public:
   HttpServer ();
@@ -76,6 +78,15 @@ public:
   void set_port (int) override;
   int get_max_clients () override;
   void set_max_clients (int) override;
+
+  inline std::vector<RouteInfo> &
+  get_routes ()
+  {
+    return routes;
+  }
+
+  void add_route (std::string _Path, std::vector<std::string> _AllowedRoutes,
+                  std::function<HttpResponse (HttpRequest)> _Callback);
 };
 } // namespace rs::block
 

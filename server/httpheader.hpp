@@ -75,6 +75,78 @@ enum class HttpRequestTypeEnum
   NoRequest,
 };
 
+enum class HttpStatusEnum
+{
+  Continue = 100,
+  SwitchingProtocols = 101,
+  Processing = 102,
+  EarlyHints = 103,
+
+  OK = 200,
+  Created = 201,
+  Accepted = 202,
+  NonAuthoritativeInformation = 203,
+  NoContent = 204,
+  ResetContent = 205,
+  PartialContent = 206,
+  MultiStatus = 207,
+  AlreadyReported = 208,
+  IMUsed = 226,
+
+  MultipleChoices = 300,
+  MovedPermanently = 301,
+  Found = 302,
+  SeeOther = 303,
+  NotModified = 304,
+  UseProxy = 305,
+  TemporaryRedirect = 307,
+  PermanentRedirect = 308,
+
+  BadRequest = 400,
+  Unauthorized = 401,
+  PaymentRequired = 402,
+  Forbidden = 403,
+  NotFound = 404,
+  MethodNotAllowed = 405,
+  NotAcceptable = 406,
+  ProxyAuthenticationRequired = 407,
+  RequestTimeout = 408,
+  Conflict = 409,
+  Gone = 410,
+  LengthRequired = 411,
+  PreconditionFailed = 412,
+  PayloadTooLarge = 413,
+  URITooLong = 414,
+  UnsupportedMediaType = 415,
+  RangeNotSatisfiable = 416,
+  ExpectationFailed = 417,
+  ImATeapot = 418,
+  MisdirectedRequest = 421,
+  UnprocessableEntity = 422,
+  Locked = 423,
+  FailedDependency = 424,
+  TooEarly = 425,
+  UpgradeRequired = 426,
+  PreconditionRequired = 428,
+  TooManyRequests = 429,
+  RequestHeaderFieldsTooLarge = 431,
+  UnavailableForLegalReasons = 451,
+
+  InternalServerError = 500,
+  NotImplemented = 501,
+  BadGateway = 502,
+  ServiceUnavailable = 503,
+  GatewayTimeout = 504,
+  HTTPVersionNotSupported = 505,
+  VariantAlsoNegotiates = 506,
+  InsufficientStorage = 507,
+  LoopDetected = 508,
+  NotExtended = 510,
+  NetworkAuthenticationRequired = 511,
+
+  NoStatus
+};
+
 struct HttpHeader
 {
   HttpHeaderEnum name;
@@ -116,8 +188,8 @@ struct HttpRequestType
     return int (type) != int (HttpHeaderEnum::NoHeader);
   }
 
-  bool operator== (const HttpRequestType &);
-  bool operator!= (const HttpRequestType &);
+  bool operator== (HttpRequestType &);
+  bool operator!= (HttpRequestType &);
 
   ~HttpRequestType () {}
 };
@@ -125,13 +197,13 @@ struct HttpRequestType
 struct HttpRequest
 {
   HttpRequestType request_type;
-  std::vector<HttpHeader> headers;
   std::map<HttpHeaderEnum, HttpHeader> head_map;
   std::string body;
 
   HttpRequest ();
   HttpRequest (HttpRequestType _RequestType, std::string _Body = "");
-  HttpRequest (HttpRequestType _RequestType, std::vector<HttpHeader> _Headers,
+  HttpRequest (HttpRequestType _RequestType,
+               std::map<HttpHeaderEnum, HttpHeader> _Headers,
                std::string _Body = "");
 
   bool
@@ -139,8 +211,6 @@ struct HttpRequest
   {
     return request_type.validate ();
   }
-
-  void map_headers (); /* for faster header access */
 
   inline HttpHeader
   get_header (HttpHeaderEnum he)
@@ -160,11 +230,72 @@ struct HttpRequest
     return head_map[he];
   }
 
-  bool operator== (const HttpRequest &);
-  bool operator!= (const HttpRequest &);
+  bool operator== (HttpRequest &);
+  bool operator!= (HttpRequest &);
 
   ~HttpRequest () {}
 };
+
+struct HttpResponse
+{
+  HttpStatusEnum status_code;
+  std::string status_message;
+  std::string version;
+  std::map<HttpHeaderEnum, HttpHeader> head_map;
+  std::string body;
+
+  HttpResponse ();
+  HttpResponse (HttpStatusEnum _StatusCode, std::string _Version = "HTTP/1.1",
+                std::string _Body = "");
+  HttpResponse (HttpStatusEnum _StatusCode, std::string _StatusMessage,
+                std::string _Version = "HTTP/1.1", std::string _Body = "");
+  HttpResponse (HttpStatusEnum _StatusCode,
+                std::map<HttpHeaderEnum, HttpHeader> _Headers,
+                std::string _Version = "HTTP/1.1", std::string _Body = "");
+  HttpResponse (HttpStatusEnum _StatusCode, std::string _StatusMessage,
+                std::map<HttpHeaderEnum, HttpHeader> _Headers,
+                std::string _Version = "HTTP/1.1", std::string _Body = "");
+
+  bool
+  validate ()
+  {
+    return status_code != HttpStatusEnum::NoStatus;
+  }
+
+  inline HttpHeader
+  get_header (HttpHeaderEnum he)
+  {
+    if (head_map.find (he) == head_map.end ())
+      return HttpHeader ();
+    return head_map[he];
+  }
+
+  inline HttpHeader &
+  get_header_ref (HttpHeaderEnum he)
+  {
+    if (head_map.find (he) == head_map.end ())
+      throw std::out_of_range ("Header not found");
+    return head_map[he];
+  }
+
+  bool operator== (const HttpResponse &);
+  bool operator!= (const HttpResponse &);
+
+  std::string to_string ();
+  void add_body (std::string);
+
+  ~HttpResponse () {}
+};
+
+struct RouteInfo
+{
+  std::vector<HttpRequestTypeEnum> allowed_requests;
+  std::string path;
+  std::function<HttpResponse (HttpRequest)> callback;
+};
+
+std::string get_status_message (HttpStatusEnum status_code);
+HttpResponse parse_response (std::vector<std::string> &);
 
 HttpHeader parse_header (std::string);
 HttpRequestTypeEnum parse_request_type_enum (std::string);

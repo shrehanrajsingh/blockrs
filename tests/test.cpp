@@ -14,6 +14,45 @@ test1 ()
 
   HttpServer s;
   s.set_port (8000);
+
+  s.add_route ("/", { "GET", "POST" }, [] (HttpRequest hr) -> HttpResponse {
+    std::string rb;
+
+    switch (hr.request_type.type)
+      {
+      case HttpRequestTypeEnum::Get:
+        {
+          std::cout << "Inside route '/'::GET" << std::endl;
+          rb = "<html>"
+               "<head>"
+               " <title>Server</title>"
+               "</head>"
+               "<body>"
+               "  <h1>Hi</h1>"
+               "</body>"
+               "</html>";
+        }
+        break;
+
+      case HttpRequestTypeEnum::Post:
+        {
+          std::cout << "Inside route '/'::POST" << std::endl;
+        }
+        break;
+
+      default:
+        break;
+      }
+
+    HttpResponse resp;
+
+    resp.status_code = HttpStatusEnum::OK;
+    resp.status_message = get_status_message (resp.status_code);
+
+    resp.add_body (rb);
+    return resp;
+  });
+
   s.run ();
 }
 
@@ -60,7 +99,7 @@ main (int argc, char const *argv[])
   using namespace rs::block;
   using namespace rs::util;
 
-  TEST (3);
+  TEST (1);
 
   return 0;
 }

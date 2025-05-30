@@ -231,6 +231,8 @@ HttpServer::handle_client (int client_fd)
       //     }
 
       HttpRequest hr = parse_request (lines);
+      // std::cout << hr.request_type.str_repr << '\t' << hr.request_type.url
+      //           << '\n';
 
       try
         {
@@ -291,26 +293,43 @@ HttpServer::handle_client (int client_fd)
            */
         }
 
-      {
-        std::lock_guard<std::mutex> lock (cout_mutex);
-        if (hr.validate ())
-          {
-            for (auto &&i : hr.headers)
-              {
-                std::stringstream ss;
-                ss << "name (" << i.str_repr.size () << "): " << i.str_repr
-                   << ", value: " << i.value;
+      // {
+      //   std::lock_guard<std::mutex> lock (cout_mutex);
+      //   if (hr.validate ())
+      //     {
+      //       for (auto &&i : hr.headers)
+      //         {
+      //           std::stringstream ss;
+      //           ss << "name (" << i.str_repr.size () << "): " << i.str_repr
+      //              << ", value: " << i.value;
 
-                std::cout << ss.str () << std::endl;
-              }
+      //           std::cout << ss.str () << std::endl;
+      //         }
 
-            std::cout << "Body: " << hr.body << std::endl;
-          }
-        else
-          {
-            std::cerr << "Invalid HTTP request. Ignoring..." << std::endl;
-          }
-      }
+      //       std::cout << "Body: " << hr.body << std::endl;
+      //     }
+      //   else
+      //     {
+      //       std::cerr << "Invalid HTTP request. Ignoring..." << std::endl;
+      //     }
+      // }
+
+      for (RouteInfo &ri : routes)
+        {
+          std::lock_guard<std::mutex> lock (cout_mutex);
+          auto iv
+              = std::find (ri.allowed_requests.begin (),
+                           ri.allowed_requests.end (), hr.request_type.type);
+          if (iv != ri.allowed_requests.end ())
+            {
+              HttpResponse resp = ri.callback (hr);
+              std::string rs = resp.to_string ();
+
+              send (client_fd, rs.c_str (), rs.size (), 0);
+              ::close (client_fd);
+              break;
+            }
+        }
       // }
     }
 }
@@ -354,6 +373,22 @@ HttpServer::close ()
   ::close (fd);
   fd = -1;
   std::cout << "Server shut down...";
+}
+
+void
+HttpServer::add_route (std::string path, std::vector<std::string> ar,
+                       std::function<HttpResponse (HttpRequest)> cb)
+{
+  RouteInfo ri;
+  ri.path = path;
+  ri.callback = cb;
+
+  std::vector<HttpRequestTypeEnum> hars;
+  for (std::string &i : ar)
+    hars.push_back (parse_request_type_enum (i));
+
+  ri.allowed_requests = hars;
+  routes.push_back (ri);
 }
 
 } // namespace rs::block
