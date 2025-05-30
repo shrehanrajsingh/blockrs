@@ -3,6 +3,8 @@
 
 #include "../header.hpp"
 
+#define J(X) (*(X))
+
 namespace rs::json
 {
 enum class JsonType
@@ -56,6 +58,95 @@ public:
 
   JsonObject &operator= (const JsonObject &);
   friend std::ostream &operator<< (std::ostream &, JsonObject &);
+
+  bool
+  is_integer () const
+  {
+    return type == JsonType::Integer;
+  }
+  bool
+  is_float () const
+  {
+    return type == JsonType::Float;
+  }
+  bool
+  is_string () const
+  {
+    return type == JsonType::String;
+  }
+  bool
+  is_object () const
+  {
+    return type == JsonType::Object;
+  }
+  bool
+  is_boolean () const
+  {
+    return type == JsonType::Boolean;
+  }
+  bool
+  is_array () const
+  {
+    return type == JsonType::Array;
+  }
+  bool
+  is_null () const
+  {
+    return type == JsonType::Null;
+  }
+
+  int
+  as_integer () const
+  {
+    if (type != JsonType::Integer)
+      throw std::runtime_error ("JSON value is not an integer");
+    return jint;
+  }
+
+  float
+  as_float () const
+  {
+    if (type != JsonType::Float)
+      throw std::runtime_error ("JSON value is not a float");
+    return jfloat;
+  }
+
+  const std::string &
+  as_string () const
+  {
+    if (type != JsonType::String)
+      throw std::runtime_error ("JSON value is not a string");
+    return jstr;
+  }
+
+  JsonContext *
+  as_object () const
+  {
+    if (type != JsonType::Object)
+      throw std::runtime_error ("JSON value is not an object");
+    return jobj;
+  }
+
+  bool
+  as_boolean () const
+  {
+    if (type != JsonType::Boolean)
+      throw std::runtime_error ("JSON value is not a boolean");
+    return jbool;
+  }
+
+  const std::vector<JsonObject *> &
+  as_array () const
+  {
+    if (type != JsonType::Array)
+      throw std::runtime_error ("JSON value is not an array");
+    return jarray;
+  }
+
+  int to_integer () const;
+  float to_float () const;
+  std::string to_string () const;
+  bool to_boolean () const;
 
   ~JsonObject () {}
 };

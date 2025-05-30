@@ -122,7 +122,7 @@ from_hex (const std::string &hex)
   std::vector<uint8_t> bytes;
   bytes.reserve (c_hex.length () / 2);
 
-  for (size_t i = 0; i < c_hex.length (); i++)
+  for (size_t i = 0; i < c_hex.length (); i += 2)
     {
       uint8_t byte = static_cast<uint8_t> (
           std::stoi (c_hex.substr (i, 2), nullptr, 16));
@@ -163,6 +163,64 @@ Wallet::Wallet (std::string privk, std::string pubk, std::string addr)
   private_key = to_fixed_key_pk (privk);
   public_key = from_hex (pubk);
   address = to_fixed_key_ad (addr);
+}
+
+std::string
+Wallet::sign (std::string s)
+{
+  secp256k1_context *ctx = secp256k1_context_create (SECP256K1_CONTEXT_SIGN);
+
+  uint8_t hash[32];
+  SHA256 (reinterpret_cast<const uint8_t *> (s.c_str ()), s.size (), hash);
+
+  secp256k1_ecdsa_signature signature;
+  if (!secp256k1_ecdsa_sign (ctx, &signature, hash, private_key.data (),
+                             nullptr, nullptr))
+    {
+      std::cerr << "Signing failed" << std::endl;
+      secp256k1_context_destroy (ctx);
+      return "";
+    }
+
+  uint8_t sig[64];
+  secp256k1_ecdsa_signature_serialize_compact (ctx, sig, &signature);
+
+  std::string sigres = to_hex (sig, 32) + to_hex (sig + 32, 32);
+  return sigres; /* r|s pair */
+}
+
+bool
+Wallet::verify (const Wallet &w, std::string sig, std::string message)
+{
+  secp256k1_context *ctx = secp256k1_context_create (SECP256K1_CONTEXT_VERIFY);
+  secp256k1_pubkey pubkey;
+
+  if (!secp256k1_ec_pubkey_parse (ctx, &pubkey, w.get_public_key ().data (),
+                                  w.get_public_key ().size ()))
+    {
+      std::cerr << "Failed to parse public key!" << std::endl;
+      return false;
+    }
+
+  const char *msg = message.c_str ();
+  uint8_t msg_hash[32];
+
+  SHA256 (reinterpret_cast<const uint8_t *> (msg), strlen (msg), msg_hash);
+
+  std::vector<uint8_t> sig_vec = from_hex (sig);
+
+  secp256k1_ecdsa_signature signature;
+  if (!secp256k1_ecdsa_signature_parse_compact (ctx, &signature,
+                                                sig_vec.data ()))
+    {
+      std::cerr << "Invalid signature format" << std::endl;
+      return false;
+    }
+
+  int v = secp256k1_ecdsa_verify (ctx, &signature, msg_hash, &pubkey);
+
+  secp256k1_context_destroy (ctx);
+  return v != 0;
 }
 
 } // namespace rs::block

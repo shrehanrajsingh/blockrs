@@ -39,6 +39,12 @@ public:
     return public_key;
   }
 
+  inline std::vector<uint8_t>
+  get_public_key () const
+  {
+    return public_key;
+  }
+
   inline std::array<uint8_t, 32> &
   get_private_key ()
   {
@@ -50,6 +56,10 @@ public:
   {
     return address;
   }
+
+  std::string sign (std::string);
+  static bool verify (const Wallet &_Wallet, std::string _Signature,
+                      std::string _Message);
 
   ~Wallet () {}
 };

@@ -6,6 +6,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 enable_testing()
 
+find_package(OpenSSL REQUIRED)
+
 add_subdirectory(tests)
 add_subdirectory(lib/secp256k1)
 
@@ -48,5 +50,5 @@ add_library(blockrs
 
     blockrs.hpp blockrs.cpp)
 
-target_link_libraries(blockrs secp256k1)
-
+target_link_libraries(blockrs secp256k1 OpenSSL::Crypto)
+target_include_directories(blockrs PRIVATE ${OPENSSL_INCLUDE_DIR})

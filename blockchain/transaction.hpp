@@ -58,6 +58,11 @@ struct Transaction
   std::string signature;
 
   Transaction () {}
+
+  void hash ();
+  std::string to_string ();
+  static Transaction from_string (std::string); /* json representation */
+
   ~Transaction () {}
 };
 } // namespace rs::block

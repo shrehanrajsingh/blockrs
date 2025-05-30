@@ -114,13 +114,38 @@ test4 ()
     }
 }
 
+void
+test5 ()
+{
+  using namespace rs::block;
+  using namespace rs::json;
+
+  Wallet w (
+      "0x423df74376ecb588240106471ae521e576574893f6a5df013950ebfb733fd214",
+      "0x04e057b29ab631df1d061118ba51966684fceb1de440a70a1cf3da789c0afda8f9f8a"
+      "916c15063443b8787a85f8f9091bebaded3c0aef8fa8d46031a5c74da65fd",
+      "0x9665a13fece00de1f60183822d55ac180484ac1d");
+
+  std::string sig = w.sign ("Hello, World!");
+  std::cout << "Signature: " << sig << std::endl;
+
+  if (Wallet::verify (w, sig, "Hello, World!"))
+    {
+      std::cout << "Verified OK" << std::endl;
+    }
+  else
+    {
+      std::cout << "Verified ERR" << std::endl;
+    }
+}
+
 int
 main (int argc, char const *argv[])
 {
   using namespace rs::block;
   using namespace rs::util;
 
-  TEST (4);
+  TEST (5);
 
   return 0;
 }

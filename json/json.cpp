@@ -670,4 +670,91 @@ JsonContext::to_string ()
   ss << "}";
   return ss.str ();
 }
+
+int
+JsonObject::to_integer () const
+{
+  if (is_integer ())
+    {
+      return as_integer ();
+    }
+  else if (is_float ())
+    {
+      return (int)as_float ();
+    }
+  else if (is_boolean ())
+    {
+      return (int)as_boolean ();
+    }
+  else if (is_null ())
+    {
+      return 0;
+    }
+  else
+    throw std::invalid_argument ("Invalid conversion to int");
+
+  return 0;
+}
+
+float
+JsonObject::to_float () const
+{
+  if (is_integer ())
+    {
+      return (float)as_integer ();
+    }
+  else if (is_float ())
+    {
+      return as_float ();
+    }
+  else if (is_boolean ())
+    {
+      return as_boolean () ? 1.0f : 0.0f;
+    }
+  else if (is_null ())
+    {
+      return 0.0f;
+    }
+  else
+    throw std::invalid_argument ("Invalid conversion to float");
+
+  return 0.0f;
+}
+
+std::string
+JsonObject::to_string () const
+{
+  if (is_string ())
+    return as_string ();
+  else
+    throw std::invalid_argument ("Invalid conversion to string");
+
+  return "";
+}
+
+bool
+JsonObject::to_boolean () const
+{
+  if (is_integer ())
+    {
+      return (bool)as_integer ();
+    }
+  else if (is_float ())
+    {
+      return as_float () != 0.0f;
+    }
+  else if (is_boolean ())
+    {
+      return as_boolean ();
+    }
+  else if (is_null ())
+    {
+      return false;
+    }
+  else
+    throw std::invalid_argument ("Invalid conversion to boolean");
+
+  return false;
+}
+
 } // namespace rs::json

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <functional>
 #include <initializer_list>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -12,6 +13,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <openssl/sha.h>
 
 // C headers
 #include <cassert>
