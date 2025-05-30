@@ -13,6 +13,7 @@
 #include <vector>
 
 // C headers
+#include <cassert>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -30,5 +31,20 @@
 #if !defined(KRS_API)
 #define KRS_API
 #endif // KRS_API
+
+namespace rs::util
+{
+static void
+trim_string (std::string &s)
+{
+  while (s.front () == ' ' || s.front () == '\t' || s.front () == '\r'
+         || s.front () == '\n')
+    s.erase (0, 1);
+
+  while (s.back () == ' ' || s.back () == '\t' || s.back () == '\r'
+         || s.back () == '\n')
+    s.pop_back ();
+}
+}
 
 #endif // HEADER_H

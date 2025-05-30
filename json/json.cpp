@@ -78,12 +78,12 @@ JsonContext::~JsonContext ()
   //     }
 }
 
-JsonObject &
+JsonObject *&
 JsonContext::operator[] (std::string s)
 {
   if (ctx.find (s) == ctx.end ())
     ctx[s] = new JsonObject;
-  return *ctx[s];
+  return ctx[s];
 }
 
 std::ostream &
@@ -98,9 +98,9 @@ operator<< (std::ostream &out, JsonObject &lhs)
         for (auto &item : lhs.jarray)
           {
             if (!first)
-              out << ",";
+              out << ", ";
             first = false;
-            out << item;
+            out << *item;
           }
         out << "]";
       }
@@ -184,5 +184,490 @@ operator<< (std::ostream &out, JsonObject &lhs)
       break;
     }
   return out;
+}
+
+std::ostream &
+operator<< (std::ostream &out, JsonContext &rhs)
+{
+  bool first = true;
+  for (const auto &[key, value] : rhs.ctx)
+    {
+      if (!first)
+        out << ", ";
+      first = false;
+      out << "\"" << key << "\": " << *value;
+    }
+  return out;
+}
+
+JsonObject *
+_parse_val (std::string &val)
+{
+  JsonObject *jo = new JsonObject;
+  util::trim_string (val);
+
+  if (val == "true" || val == "false")
+    {
+      jo->get_type () = JsonType::Boolean;
+      jo->jbool = val[0] == 't';
+    }
+  else if (val == "null")
+    {
+      jo->get_type () = JsonType::Null;
+    }
+  else if (val[0] == '\"')
+    {
+      jo->get_type () = JsonType::String;
+      jo->jstr = val.substr (1, val.size () - 2);
+    }
+  else if (val[0] == '{')
+    {
+      jo->get_type () = JsonType::Object;
+      jo->jobj = new JsonContext;
+      std::string inner_content = val.substr (1, val.size () - 2);
+      util::trim_string (inner_content);
+
+      bool reading_key = true;
+      bool reading_val = false;
+      bool in_str = false;
+      int gb = 0;
+
+      std::string key;
+      std::string value;
+
+      size_t sl = inner_content.size ();
+
+      for (size_t i = 0; i < sl; i++)
+        {
+          char &c = inner_content[i];
+
+          switch (c)
+            {
+            case '{':
+              if (!in_str)
+                gb++;
+              break;
+
+            case '}':
+              if (!in_str)
+                gb--;
+              break;
+
+            case '\"':
+              if (in_str)
+                {
+                  if (i > 0 && inner_content[i - 1] == '\\')
+                    {
+                      if (i > 1 && inner_content[i - 2] == '\\')
+                        in_str = false;
+                    }
+                  else
+                    in_str = false;
+                }
+              else
+                in_str = true;
+              break;
+
+            case '[':
+              if (!in_str)
+                gb++;
+              break;
+
+            case ']':
+              if (!in_str)
+                gb--;
+              break;
+
+            case ':':
+              if (!in_str && !gb)
+                {
+                  reading_key = false;
+                  reading_val = true;
+                  continue;
+                }
+              break;
+
+            case ',':
+              if (!in_str && !gb)
+                {
+                  util::trim_string (key);
+                  key.erase (0, 1);
+                  key.pop_back ();
+
+                  try
+                    {
+                      (*jo->jobj)[key] = _parse_val (value);
+                    }
+                  catch (const std::exception &e)
+                    {
+                      std::cerr << e.what () << '\n';
+                    }
+
+                  key = "";
+                  value = "";
+                  reading_key = true;
+                  reading_val = false;
+                  continue;
+                }
+              break;
+            }
+
+          if (reading_key)
+            key += c;
+          if (reading_val)
+            value += c;
+        }
+
+      if (!key.empty ())
+        {
+          util::trim_string (key);
+          key.erase (0, 1);
+          key.pop_back ();
+
+          try
+            {
+              (*jo->jobj)[key] = _parse_val (value);
+            }
+          catch (const std::exception &e)
+            {
+              std::cerr << e.what () << '\n';
+            }
+        }
+    }
+  else if (val[0] == '[')
+    {
+      std::vector<JsonObject *> vls;
+      std::string buf;
+
+      bool in_str = false;
+      int gb = 0;
+
+      size_t vl = val.size ();
+
+      for (size_t j = 1; j < vl; j++)
+        {
+          char &d = val[j];
+
+          switch (d)
+            {
+            case '[':
+            case '{':
+              {
+                if (!in_str)
+                  gb++;
+              }
+              break;
+
+            case ']':
+              {
+                if (j == vl - 1)
+                  {
+                    if (!in_str && !gb)
+                      {
+                        vls.push_back (_parse_val (buf));
+                        buf = "";
+                      }
+                  }
+                else
+                  {
+                    if (!in_str)
+                      gb--;
+                  }
+              }
+              break;
+            case '}':
+              {
+                if (!in_str)
+                  gb--;
+              }
+              break;
+
+            case '\"':
+              {
+                if (in_str)
+                  {
+                    if (val[j - 1] == '\\')
+                      {
+                        if (val[j - 2] == '\\')
+                          in_str = false; /* \\" */
+                      }
+                    else
+                      in_str = false;
+                  }
+                else
+                  {
+                    in_str = true;
+                  }
+              }
+              break;
+
+            case ',':
+              {
+                if (!in_str && !gb)
+                  {
+                    vls.push_back (_parse_val (buf));
+                    buf = "";
+                    continue;
+                  }
+              }
+              break;
+
+            default:
+              break;
+            }
+
+          buf += d;
+        }
+
+      jo->get_type () = JsonType::Array;
+      jo->jarray = vls;
+    }
+  else
+    {
+      bool saw_digits = true;
+      bool saw_dot = false;
+
+      for (char &c : val)
+        {
+          if (c >= '0' && c <= '9')
+            ;
+          else
+            {
+              if (c == '.')
+                {
+                  assert (!saw_dot);
+                  saw_dot = true;
+                }
+              else
+                {
+                  saw_digits = false;
+                  break;
+                }
+            }
+        }
+
+      if (saw_digits)
+        {
+          if (saw_dot)
+            {
+              jo->get_type () = JsonType::Float;
+              jo->jfloat = atof (val.c_str ());
+            }
+          else
+            {
+              jo->get_type () = JsonType::Integer;
+              jo->jint = atoi (val.c_str ());
+            }
+        }
+      else
+        {
+          throw std::invalid_argument ("Invalid JSON value: " + val);
+        }
+    }
+
+  return jo;
+}
+
+JsonContext
+JsonContext::from_string (std::string s)
+{
+  util::trim_string (s);
+  json_t r;
+
+  size_t sl = s.size ();
+  bool reading_key = true;
+  bool reading_val = false;
+  bool in_str = false;
+  int gb = 0;
+
+  std::string key;
+  std::string val;
+
+  for (size_t i = 0; i < sl; i++)
+    {
+      char &c = s[i];
+
+      switch (c)
+        {
+        case '{':
+          {
+            /*
+              Certain json objects enclose
+              entire object definition between {}
+            */
+            if (!i)
+              {
+                continue;
+              }
+
+            if (reading_key)
+              {
+                assert (in_str && "Keys can only be strings.");
+              }
+
+            if (!in_str)
+              gb++;
+          }
+          break;
+
+        case '}':
+          {
+            if (reading_key)
+              {
+                assert (in_str && "Keys can only be strings.");
+              }
+
+            if (i == sl - 1)
+              {
+                if (!in_str && !gb)
+                  {
+                    util::trim_string (key);
+                    key.erase (0, 1);
+                    key.pop_back ();
+
+                    try
+                      {
+                        r[key] = _parse_val (val);
+                        // dbg ("Found key: " << key);
+                        // dbg ("Found val: " << val);
+                        // dbg ("Found r[key]: " << *r[key]);
+                        // dbg ("Found r[key].get_type(): "
+                        //      << int (r[key]->get_type ()));
+                      }
+                    catch (const std::exception &e)
+                      {
+                        std::cerr << e.what () << '\n';
+                      }
+
+                    key = "";
+                    val = "";
+                    reading_key = true;
+                    reading_val = false;
+                  }
+              }
+
+            if (!in_str)
+              gb--;
+          }
+          break;
+
+        /* single quotes not allowed */
+        // case '\'':
+        case '\"':
+          {
+            if (in_str)
+              {
+                if (s[i - 1] == '\\')
+                  {
+                    if (s[i - 2] == '\\')
+                      in_str = false; /* \\" */
+                  }
+                else
+                  in_str = false;
+              }
+            else
+              {
+                in_str = true;
+              }
+          }
+          break;
+
+        case '[':
+          {
+            if (reading_key)
+              {
+                assert (in_str && "Keys can only be strings.");
+              }
+
+            if (!in_str)
+              gb++;
+          }
+          break;
+
+        case ']':
+          {
+            if (reading_key)
+              {
+                assert (in_str && "Keys can only be strings.");
+              }
+
+            if (!in_str)
+              gb--;
+          }
+          break;
+
+        case ':':
+          {
+            if (!in_str && !gb)
+              {
+                reading_key = false;
+                reading_val = true;
+                continue;
+              }
+          }
+          break;
+
+        case ',':
+          {
+            if (!in_str && !gb)
+              {
+                util::trim_string (key);
+                key.erase (0, 1);
+                key.pop_back ();
+
+                try
+                  {
+                    JsonObject *jo = _parse_val (val);
+                    // std::cout << int (jo->get_type ()) << '\n';
+                    r[key] = jo;
+                    // dbg ("Found key: " << key);
+                    // dbg ("Found val: " << val);
+                    // dbg ("Found r[key]: " << *r[key]);
+                    // dbg ("Found r[key].get_type(): "
+                    //      << int (r[key]->get_type ()));
+                  }
+                catch (const std::exception &e)
+                  {
+                    std::cerr << e.what () << '\n';
+                  }
+
+                key = "";
+                val = "";
+                reading_key = true;
+                reading_val = false;
+                continue;
+              }
+          }
+          break;
+
+        default:
+          break;
+        }
+
+      if (reading_key)
+        key += c;
+
+      if (reading_val)
+        val += c;
+    }
+
+  return r;
+}
+
+std::string
+JsonContext::to_string ()
+{
+  std::stringstream ss;
+  ss << "{";
+  bool first = true;
+  for (const auto &[key, value] : ctx)
+    {
+      if (!first)
+        ss << ", ";
+      first = false;
+      ss << "\"" << key << "\": " << *value;
+    }
+  ss << "}";
+  return ss.str ();
 }
 } // namespace rs::json
