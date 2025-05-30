@@ -550,4 +550,16 @@ get_status_message (HttpStatusEnum status_code)
   return "";
 }
 
+std::string
+get_header_repr (HttpHeaderEnum &he)
+{
+  for (auto &[type, repr] : ntable)
+    {
+      if (type == he)
+        return repr;
+    }
+
+  return "";
+}
+
 } // namespace rs::block

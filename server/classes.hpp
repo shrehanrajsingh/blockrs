@@ -23,6 +23,19 @@
 
 // #include "../utils/vec.hpp"
 
+#if !defined(_RURL)
+#define _RURL(X)
+#endif
+
+#if !defined(REQ)
+#define REQ(...)
+#endif
+
+#if !defined(ROUTE)
+#define ROUTE(X)                                                              \
+  rs::block::HttpResponse route_##X (rs::block::HttpRequest _Req);
+#endif
+
 namespace rs::block
 {
 // using namespace rs::util;

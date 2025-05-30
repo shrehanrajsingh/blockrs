@@ -297,6 +297,8 @@ struct RouteInfo
 std::string get_status_message (HttpStatusEnum status_code);
 HttpResponse parse_response (std::vector<std::string> &);
 
+std::string get_header_repr (HttpHeaderEnum &);
+
 HttpHeader parse_header (std::string);
 HttpRequestTypeEnum parse_request_type_enum (std::string);
 HttpRequestType parse_request_type (std::string);

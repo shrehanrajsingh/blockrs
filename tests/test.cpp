@@ -139,13 +139,25 @@ test5 ()
     }
 }
 
+void
+test6 ()
+{
+  using namespace rs::block;
+  using namespace rs::json;
+
+  NodeServer ns;
+  ns.set_port (8000);
+
+  ns.run ();
+}
+
 int
 main (int argc, char const *argv[])
 {
   using namespace rs::block;
   using namespace rs::util;
 
-  TEST (5);
+  TEST (6);
 
   return 0;
 }

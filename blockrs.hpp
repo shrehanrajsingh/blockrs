@@ -7,6 +7,7 @@
 
 #include "blockchain/blocknetwork.hpp"
 #include "blockchain/node.hpp"
+#include "blockchain/nodeserver.hpp"
 #include "blockchain/transaction.hpp"
 #include "blockchain/wallet.hpp"
 

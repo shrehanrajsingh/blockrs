@@ -320,7 +320,8 @@ HttpServer::handle_client (int client_fd)
           auto iv
               = std::find (ri.allowed_requests.begin (),
                            ri.allowed_requests.end (), hr.request_type.type);
-          if (iv != ri.allowed_requests.end ())
+          if (iv != ri.allowed_requests.end ()
+              && hr.request_type.url == ri.path)
             {
               HttpResponse resp = ri.callback (hr);
               std::string rs = resp.to_string ();

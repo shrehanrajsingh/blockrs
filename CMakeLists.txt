@@ -47,6 +47,7 @@ add_library(blockrs
     blockchain/blocknetwork.hpp blockchain/blocknetwork.cpp
     blockchain/transaction.hpp blockchain/transaction.cpp
     blockchain/wallet.hpp blockchain/wallet.cpp
+    blockchain/nodeserver.hpp blockchain/nodeserver.cpp
 
     blockrs.hpp blockrs.cpp)
 
