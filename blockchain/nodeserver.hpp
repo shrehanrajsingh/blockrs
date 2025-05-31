@@ -24,6 +24,7 @@ private:
   /* we will call '/' top */
   ROUTE (top) _RURL ("/") REQ ("GET", "POST");
   ROUTE (info) _RURL ("/info") REQ ("GET");
+  ROUTE (connect_to_chain) _RURL ("/connect") REQ ("POST");
 
 public:
   NodeServer ();

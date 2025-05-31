@@ -12,6 +12,7 @@ enum class TransactionStatusEnum
 {
   Success = 0,
   Pending = 1,
+  Rejected = 2,
 };
 
 /**
@@ -57,7 +58,9 @@ struct Transaction
   std::string input_data;
   std::string signature;
 
-  Transaction () {}
+  //   Transaction () = default;
+  //   Transaction (Transaction &) = default;
+  //   Transaction (Transaction &&) = default;
 
   void hash ();
   std::string to_string ();

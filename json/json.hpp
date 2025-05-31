@@ -5,6 +5,10 @@
 
 #define J(X) (*(X))
 
+#if !defined(JSON_RAW)
+#define JSON_RAW(...) #__VA_ARGS__
+#endif
+
 namespace rs::json
 {
 enum class JsonType
@@ -169,6 +173,8 @@ public:
   static JsonContext from_string (std::string);
   JsonObject *&operator[] (std::string);
   std::string to_string ();
+
+  bool has_key (std::string);
 
   friend std::ostream &operator<< (std::ostream &, JsonContext &);
 

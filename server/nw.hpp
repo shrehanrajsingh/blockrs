@@ -60,7 +60,6 @@ public:
  */
 class HttpServer : public _Server_Base
 {
-private:
   struct sockaddr_in address;
   int addrlen = 0;
   std::vector<RouteInfo> routes;

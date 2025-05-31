@@ -757,4 +757,10 @@ JsonObject::to_boolean () const
   return false;
 }
 
+bool
+JsonContext::has_key (std::string k)
+{
+  return ctx.find (k) != ctx.end ();
+}
+
 } // namespace rs::json

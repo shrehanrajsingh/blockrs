@@ -2,9 +2,11 @@
 #define WALLET_H
 
 #include "../header.hpp"
-#include "../lib/tiny_sha3/sha3.h"
 #include "transaction.hpp"
+
 #include <secp256k1.h>
+#include <secp256k1_recovery.h>
+#include <sha3.h>
 
 #define KECCAK_256_RATE 136
 #define KECCAK_256_OUTPUT_SIZE 32
@@ -16,6 +18,9 @@ std::string to_hex (const uint8_t *, size_t);
 std::vector<uint8_t> from_hex (const std::string &);
 std::array<uint8_t, 32> to_fixed_key_pk (const std::string &);
 std::array<uint8_t, 20> to_fixed_key_ad (const std::string &);
+bool recover_public_key (const std::vector<uint8_t> &_MsgHash,
+                         const std::vector<uint8_t> &_Signature,
+                         std::vector<uint8_t> &_Out);
 
 class Wallet
 {
@@ -61,6 +66,17 @@ public:
   std::string sign (std::string);
   static bool verify (const Wallet &_Wallet, std::string _Signature,
                       std::string _Message);
+
+  static bool verify_with_pubkey (std::vector<uint8_t> &_PubKey,
+                                  std::string _Signature,
+                                  std::string _Message);
+
+  static bool verify_with_pubkey (std::vector<uint8_t> &&_PubKey,
+                                  std::string _Signature,
+                                  std::string _Message);
+
+  static bool verify_with_pubkey (std::string &_PubKey, std::string _Signature,
+                                  std::string _Message);
 
   void sign_transaction (Transaction &);
 

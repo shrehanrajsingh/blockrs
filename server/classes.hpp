@@ -31,6 +31,10 @@
 #define REQ(...)
 #endif
 
+#if !defined(HTML_RAW)
+#define HTML_RAW(...) #__VA_ARGS__
+#endif
+
 #if !defined(ROUTE)
 #define ROUTE(X)                                                              \
   rs::block::HttpResponse route_##X (rs::block::HttpRequest _Req);

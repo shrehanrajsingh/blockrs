@@ -8,13 +8,22 @@ enable_testing()
 
 find_package(OpenSSL REQUIRED)
 
-add_subdirectory(tests)
-add_subdirectory(lib/secp256k1)
+# add_definitions(-DSECP256K1_ENABLE_MODULE_RECOVERY)
+# set(SECP256K1_ENABLE_MODULE_RECOVERY ON CACHE BOOL "Enable recovery module")
+# set(SECP256K1_BUILD_STATIC ON CACHE BOOL "Build static lib")
+# set(SECP256K1_BUILD_SHARED OFF CACHE BOOL "Don't build shared lib")
+# set(SECP256K1_BUILD_EXAMPLES OFF CACHE BOOL "Don't build examples")
+# set(SECP256K1_BUILD_TESTS OFF CACHE BOOL "Don't build tests")
 
-include_directories(
-    lib/secp256k1/include
-    lib/tiny_sha3
+find_library(SECP256K1_LIB secp256k1 REQUIRED)
+
+find_path(SECP256K1_INCLUDE_DIR
+    NAMES secp256k1.h
+    PATHS /usr/local/include /usr/include
 )
+
+add_subdirectory(tests)
+# add_subdirectory(lib/secp256k1)
 
 if(UNIX)
     set(SERVER_SOURCES 
@@ -48,8 +57,17 @@ add_library(blockrs
     blockchain/transaction.hpp blockchain/transaction.cpp
     blockchain/wallet.hpp blockchain/wallet.cpp
     blockchain/nodeserver.hpp blockchain/nodeserver.cpp
+    blockchain/bnserver.hpp blockchain/bnserver.cpp
 
     blockrs.hpp blockrs.cpp)
 
-target_link_libraries(blockrs secp256k1 OpenSSL::Crypto)
-target_include_directories(blockrs PRIVATE ${OPENSSL_INCLUDE_DIR})
+target_include_directories(
+    blockrs PUBLIC
+    ${OPENSSL_INCLUDE_DIR}
+    ${SECP256K1_INCLUDE_DIR}
+    # lib/secp256k1/include
+    # /usr/local/include
+    lib/tiny_sha3
+)
+
+target_link_libraries(blockrs ${SECP256K1_LIB} OpenSSL::Crypto)

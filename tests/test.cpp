@@ -184,10 +184,11 @@ test7 ()
       "664a68b912dad307532d2e586267b5be57748a4154ab75970c8bdd6378ceb",
       "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40");
 
+  /* send from w to x */
   Transaction t;
-  t.block_num = 0;
-  t.from = "0xa4c8a91f0098867640eebcc188a822f67654e708";
-  t.to = "0x9665a13fece00de1f60183822d55ac180484ac1d";
+  t.block_num = 0; /* blockchain will update it */
+  t.from = to_hex (w.get_address ().data (), 20);
+  t.to = to_hex (x.get_address ().data (), 20);
   t.gas_price = GAS_PRICE_DEFAULT;
   t.gas_used = 2100;
   t.input_data = "";
@@ -201,10 +202,11 @@ test7 ()
   w.sign_transaction (t);
   t.hash ();
 
+  /* send from x to w */
   Transaction u;
-  u.block_num = 0;
-  u.from = "0xa4c8a91f0098867640eebcc188a822f67654e708";
-  u.to = "0x9665a13fece00de1f60183822d55ac180484ac1d";
+  u.block_num = 0; /* blockchain will update it */
+  u.from = to_hex (x.get_address ().data (), 20);
+  u.to = to_hex (w.get_address ().data (), 20);
   u.gas_price = GAS_PRICE_DEFAULT;
   u.gas_used = 2100;
   u.input_data = "";
@@ -219,14 +221,14 @@ test7 ()
   u.hash ();
 
   /* try changing `x` here to `w` */
-  if (Wallet::verify (x, u.signature, u.to_string_sign ()))
-    {
-      std::cout << "Verified OK" << std::endl;
-    }
-  else
-    {
-      std::cout << "Verified ERR" << std::endl;
-    }
+  // if (Wallet::verify (x, u.signature, u.to_string_sign ()))
+  //   {
+  //     std::cout << "Verified OK" << std::endl;
+  //   }
+  // else
+  //   {
+  //     std::cout << "Verified ERR" << std::endl;
+  //   }
 
   BlockNetwork bn;
   bn.add_block ((Block){ .header = (BlockHeader){ .difficulty_target = 4,
@@ -239,13 +241,160 @@ test7 ()
   bn.to_string ();
 }
 
+void
+test8 ()
+{
+  using namespace rs::block;
+  using namespace rs::json;
+
+  BlockNetwork bn;
+
+  /**
+   * Randomly generated wallet details
+   * Taken from tests/TEST_WALLETS
+   */
+  Wallet w (
+      "0x423df74376ecb588240106471ae521e576574893f6a5df013950ebfb733fd214",
+      "0x04e057b29ab631df1d061118ba51966684fceb1de440a70a1cf3da789c0afda8f9f8a"
+      "916c15063443b8787a85f8f9091bebaded3c0aef8fa8d46031a5c74da65fd",
+      "0x9665a13fece00de1f60183822d55ac180484ac1d");
+
+  Transaction t = { .from = "0x9665a13fece00de1f60183822d55ac180484ac1d",
+                    .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
+                    .gas_price = 50.0f,
+                    .gas_used = 2100.0f,
+                    .input_data = "",
+                    .nonce = 10,
+                    .status = TransactionStatusEnum::Pending,
+                    .symbol = "RS",
+                    .timestamp = time (NULL),
+                    .tr_fee = (2100 * 50) / 1000.0f,
+                    .value = 50 };
+
+  w.sign_transaction (t);
+
+  bn.add_transaction (t);
+  bn.verify_transactions ();
+
+  std::cout << bn.get_pending_transactions ().size () << '\t'
+            << bn.get_rejected_transactions ().size () << std::endl;
+
+  // std::string str_sign = t.to_string_sign ();
+
+  // uint8_t h[32];
+  // const char *ss = str_sign.c_str ();
+  // SHA256 (reinterpret_cast<const uint8_t *> (ss), str_sign.size (), h);
+  // std::vector<uint8_t> h_vec (h, h + 32);
+
+  // std::vector<uint8_t> pk;
+  // std::cout << recover_public_key (h_vec, from_hex (t.signature), pk);
+}
+
+void
+test9 ()
+{
+  using namespace rs::block;
+  using namespace rs::json;
+
+  Wallet w (
+      "0x423df74376ecb588240106471ae521e576574893f6a5df013950ebfb733fd214",
+      "0x04e057b29ab631df1d061118ba51966684fceb1de440a70a1cf3da789c0afda8f9f8a"
+      "916c15063443b8787a85f8f9091bebaded3c0aef8fa8d46031a5c74da65fd",
+      "0x9665a13fece00de1f60183822d55ac180484ac1d");
+
+  BlockNetwork bn (w);
+
+  Transaction t = { .from = "0x9665a13fece00de1f60183822d55ac180484ac1d",
+                    .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
+                    .gas_price = 50.0f,
+                    .gas_used = 2100.0f,
+                    .input_data = "",
+                    .nonce = 10,
+                    .status = TransactionStatusEnum::Pending,
+                    .symbol = "RS",
+                    .timestamp = time (NULL),
+                    .tr_fee = (2100 * 50) / 1000.0f,
+                    .value = 50 };
+
+  w.sign_transaction (t);
+  bn.add_transaction (t);
+
+  bn.add_block ((Block){
+      .header = (BlockHeader){ .difficulty_target
+                               = bn.get_block (0).header.difficulty_target,
+                               .nonce = 10,
+                               .timestamp = time (NULL),
+                               .version = bn.get_block (0).header.version },
+  });
+
+  std::cout << bn.to_string ();
+
+  if (bn.valid_chain ())
+    std::cout << "Chain is valid!" << std::endl;
+  else
+    std::cout << "Chain is invalid!" << std::endl;
+}
+
+void
+test10 ()
+{
+  using namespace rs::block;
+  using namespace rs::json;
+
+  Wallet w (
+      "0x423df74376ecb588240106471ae521e576574893f6a5df013950ebfb733fd214",
+      "0x04e057b29ab631df1d061118ba51966684fceb1de440a70a1cf3da789c0afda8f9f8a"
+      "916c15063443b8787a85f8f9091bebaded3c0aef8fa8d46031a5c74da65fd",
+      "0x9665a13fece00de1f60183822d55ac180484ac1d");
+
+  BlockNetwork bn (w);
+
+  Transaction t = { .from = "0x9665a13fece00de1f60183822d55ac180484ac1d",
+                    .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
+                    .gas_price = 50.0f,
+                    .gas_used = 2100.0f,
+                    .input_data = "",
+                    .nonce = 10,
+                    .status = TransactionStatusEnum::Pending,
+                    .symbol = "RS",
+                    .timestamp = time (NULL),
+                    .tr_fee = (2100 * 50) / 1000.0f,
+                    .value = 50 };
+
+  w.sign_transaction (t);
+  bn.add_transaction (t);
+
+  bn.add_block ((Block){
+      .header = (BlockHeader){ .difficulty_target
+                               = bn.get_block (0).header.difficulty_target,
+                               .nonce = 10,
+                               .timestamp = time (NULL),
+                               .version = bn.get_block (0).header.version },
+  });
+
+  std::cout << bn.to_string ();
+
+  if (bn.valid_chain ())
+    std::cout << "Chain is valid!" << std::endl;
+  else
+    std::cout << "Chain is invalid!" << std::endl;
+
+  Node *n = new Node (NodeTypeEnum::Full, "", "");
+
+  BlocknetServer bns;
+  bns.set_port (8000);
+  bns.add_node (n);
+
+  bns.run ();
+}
+
 int
 main (int argc, char const *argv[])
 {
   using namespace rs::block;
   using namespace rs::util;
 
-  TEST (7);
+  TEST (10);
 
   return 0;
 }

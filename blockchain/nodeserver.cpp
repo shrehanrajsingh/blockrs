@@ -35,8 +35,7 @@ NodeServer::setup_socket ()
   if (listen (fd, get_max_clients ()) < 0)
     throw std::runtime_error ("listen failed");
 
-  std::cout << "Node Server running on http://127.0.0.1:" << get_port ()
-            << std::endl;
+  dbg ("Node Server running on " << BKRS_SERVER_URL << ':' << get_port ());
   std::cout.flush ();
 }
 
@@ -108,6 +107,7 @@ NodeServer::handle_client (int client_fd)
                                          cl - total_read);
                   if (bytes_read <= 0)
                     {
+                      goto rem_client;
                       break;
                     }
                   total_read += bytes_read;
@@ -131,6 +131,7 @@ NodeServer::handle_client (int client_fd)
            */
         }
 
+      bool handled_client = false;
       for (RouteInfo &ri : routes)
         {
           std::lock_guard<std::mutex> lock (cout_mutex);
@@ -145,9 +146,32 @@ NodeServer::handle_client (int client_fd)
 
               send (client_fd, rs.c_str (), rs.size (), 0);
               ::close (client_fd);
+              handled_client = true;
               break;
             }
         }
+
+      if (!handled_client)
+        {
+          HttpResponse resp404;
+          resp404.status_code = HttpStatusEnum::NotFound;
+          resp404.status_message = get_status_message (resp404.status_code);
+
+          std::string rs = resp404.to_string ();
+
+          send (client_fd, rs.c_str (), rs.size (), 0);
+          ::close (client_fd);
+        }
+    }
+  else
+    {
+    rem_client:;
+      /* client has exited */
+      std::vector<int>::iterator pos
+          = std::find (client_fds.begin (), client_fds.end (), client_fd);
+
+      if (pos != client_fds.end ())
+        client_fds.erase (pos);
     }
 }
 
@@ -168,6 +192,8 @@ NodeServer::run ()
             perror ("accept failed");
           break;
         }
+
+      add_client (client_fd);
 
       {
         std::lock_guard<std::mutex> lock (cout_mutex);
@@ -264,10 +290,10 @@ NodeServer::route_top (HttpRequest req)
   resp.status_code = HttpStatusEnum::OK;
   resp.status_message = get_status_message (resp.status_code);
 
-  resp.body = ""
-              "<html> <head><title> NodeServer</title></head><body>    \
+  resp.add_body (""
+                 "<html> <head><title> NodeServer</title></head><body>    \
               <h1> NodeServer</h1><p> Welcome to NodeServer</p></body>  \
-              </html>";
+              </html>");
 
   return resp;
 }
@@ -299,11 +325,47 @@ NodeServer::route_info (HttpRequest req)
   HttpHeader content_type = parse_header ("Content-Type: application/json");
   resp.head_map[content_type.name] = content_type;
 
-  resp.add_body (node ? node->to_string ()
-                      : "{\"message\": \"Node is not available. Please don't "
-                        "send requests here.\"}");
+  resp.add_body (node ? node->to_string () : JSON_RAW ({
+    "message" : "Node is not available. Please don't send requests here"
+  }));
 
   return resp;
+}
+
+HttpResponse
+NodeServer::route_connect_to_chain (HttpRequest req)
+{
+  HttpResponse resp;
+
+  if (!node)
+    {
+      resp.status_code = HttpStatusEnum::ServiceUnavailable;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      resp.add_body (JSON_RAW ({
+        "message" : "Node is not available. Please don't send requests here"
+      }));
+
+      return resp;
+    }
+
+  json_t jreq = json_t::from_string (req.body);
+
+  if (!jreq.has_key ("url"))
+    {
+      resp.status_code = HttpStatusEnum::Unauthorized;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      resp.add_body (JSON_RAW ({ "error" : "No URL specified" }));
+      return resp;
+    }
+
+  std::string url = jreq["url"]->as_string ();
+  node->set_bnt_url (url);
 }
 
 void
@@ -314,6 +376,10 @@ NodeServer::add_routes ()
 
   add_route ("/info", { "GET" },
              [this] (HttpRequest req) { return this->route_info (req); });
+
+  add_route ("/connect", { "POST" }, [this] (HttpRequest req) {
+    return this->route_connect_to_chain (req);
+  });
 }
 
 void

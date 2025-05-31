@@ -117,7 +117,8 @@ from_hex (const std::string &hex)
     c_hex = hex;
 
   if (c_hex.length () % 2 != 0)
-    throw std::invalid_argument ("Hex string must have even length");
+    throw std::invalid_argument (
+        "from_hex(): Hex string must have even length");
 
   std::vector<uint8_t> bytes;
   bytes.reserve (c_hex.length () / 2);
@@ -138,7 +139,7 @@ to_fixed_key_pk (const std::string &hex)
   std::vector<uint8_t> vec = from_hex (hex);
 
   if (vec.size () != 32)
-    throw std::invalid_argument ("Key must be 32 bytes");
+    throw std::invalid_argument ("to_fixed_key_pk(): Key must be 32 bytes");
 
   std::array<uint8_t, 32> arr;
   std::copy (vec.begin (), vec.end (), arr.begin ());
@@ -151,7 +152,7 @@ to_fixed_key_ad (const std::string &hex)
   std::vector<uint8_t> vec = from_hex (hex);
 
   if (vec.size () != 20)
-    throw std::invalid_argument ("Key must be 20 bytes");
+    throw std::invalid_argument ("to_fixed_key_ad(): Key must be 20 bytes");
 
   std::array<uint8_t, 20> arr;
   std::copy (vec.begin (), vec.end (), arr.begin ());
@@ -173,9 +174,9 @@ Wallet::sign (std::string s)
   uint8_t hash[32];
   SHA256 (reinterpret_cast<const uint8_t *> (s.c_str ()), s.size (), hash);
 
-  secp256k1_ecdsa_signature signature;
-  if (!secp256k1_ecdsa_sign (ctx, &signature, hash, private_key.data (),
-                             nullptr, nullptr))
+  secp256k1_ecdsa_recoverable_signature signature;
+  if (!secp256k1_ecdsa_sign_recoverable (
+          ctx, &signature, hash, private_key.data (), nullptr, nullptr))
     {
       std::cerr << "Signing failed" << std::endl;
       secp256k1_context_destroy (ctx);
@@ -183,10 +184,16 @@ Wallet::sign (std::string s)
     }
 
   uint8_t sig[64];
-  secp256k1_ecdsa_signature_serialize_compact (ctx, sig, &signature);
+  int recid;
+  secp256k1_ecdsa_recoverable_signature_serialize_compact (ctx, sig, &recid,
+                                                           &signature);
 
-  std::string sigres = to_hex (sig, 32) + to_hex (sig + 32, 32);
-  return sigres; /* r|s pair */
+  uint8_t v = static_cast<uint8_t> (recid + 27);
+  std::string sigres
+      = to_hex (sig, 32) + to_hex (sig + 32, 32) + to_hex (&v, 1);
+
+  secp256k1_context_destroy (ctx);
+  return sigres; /* r|s|v pair pair */
 }
 
 bool
@@ -223,11 +230,105 @@ Wallet::verify (const Wallet &w, std::string sig, std::string message)
   return v != 0;
 }
 
+bool
+Wallet::verify_with_pubkey (std::vector<uint8_t> &pk, std::string sig,
+                            std::string msg)
+{
+  secp256k1_context *ctx = secp256k1_context_create (SECP256K1_CONTEXT_VERIFY);
+  secp256k1_pubkey pubkey;
+
+  if (!secp256k1_ec_pubkey_parse (ctx, &pubkey, pk.data (), pk.size ()))
+    {
+      std::cerr << "Failed to parse public key!" << std::endl;
+      return false;
+    }
+
+  const char *msg_str = msg.c_str ();
+  uint8_t msg_hash[32];
+
+  SHA256 (reinterpret_cast<const uint8_t *> (msg_str), strlen (msg_str),
+          msg_hash);
+
+  std::vector<uint8_t> sig_vec = from_hex (sig);
+
+  secp256k1_ecdsa_signature signature;
+  if (!secp256k1_ecdsa_signature_parse_compact (ctx, &signature,
+                                                sig_vec.data ()))
+    {
+      std::cerr << "Invalid signature format" << std::endl;
+      return false;
+    }
+
+  int v = secp256k1_ecdsa_verify (ctx, &signature, msg_hash, &pubkey);
+
+  secp256k1_context_destroy (ctx);
+  return v != 0;
+}
+
+bool
+Wallet::verify_with_pubkey (std::string &pb, std::string sig, std::string msg)
+{
+  std::vector<uint8_t> pk = from_hex (pb);
+  return Wallet::verify_with_pubkey (pk, sig, msg);
+}
+
 void
 Wallet::sign_transaction (Transaction &t)
 {
   std::string js = t.to_string_sign ();
   t.signature = this->sign (js);
+}
+
+bool
+recover_public_key (const std::vector<uint8_t> &msg_hash,
+                    const std::vector<uint8_t> &sig,
+                    std::vector<uint8_t> &out_pubkey)
+{
+  secp256k1_context *ctx = secp256k1_context_create (SECP256K1_CONTEXT_VERIFY);
+
+  if (msg_hash.size () != 32 || sig.size () != 65)
+    {
+      dbg ("msg_hash.size () != 32 || sig.size() != 65\nmsg_hash.size(): "
+           << msg_hash.size () << "\nsig.size(): " << sig.size ());
+
+      return false;
+    }
+
+  secp256k1_ecdsa_recoverable_signature signature;
+  int recid = sig.back () - 27;
+
+  if (recid < 0 || recid > 3)
+    {
+      dbg ("recid < 0 || recid > 3");
+      return false;
+    }
+
+  if (!secp256k1_ecdsa_recoverable_signature_parse_compact (
+          ctx, &signature, sig.data (), recid))
+    {
+      dbg ("!secp256k1_ecdsa_recoverable_signature_parse_compact ("
+           "ctx,"
+           "&signature, sig.data (), recid) ");
+      secp256k1_context_destroy (ctx);
+      return false;
+    }
+
+  secp256k1_pubkey pubkey;
+  if (!secp256k1_ecdsa_recover (ctx, &pubkey, &signature, msg_hash.data ()))
+    {
+      dbg ("!secp256k1_ecdsa_recover (ctx, &pubkey, &signature, msg_hash.data "
+           "())");
+      secp256k1_context_destroy (ctx);
+      return false;
+    }
+
+  size_t out_len = 65;
+  out_pubkey.resize (out_len);
+  secp256k1_ec_pubkey_serialize (ctx, out_pubkey.data (), &out_len, &pubkey,
+                                 SECP256K1_EC_UNCOMPRESSED);
+
+  secp256k1_context_destroy (ctx);
+  return true;
 }
 
 } // namespace rs::block

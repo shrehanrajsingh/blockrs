@@ -55,6 +55,14 @@ Server::handle_client (int client_fd)
           std::lock_guard<std::mutex> lock (cout_mutex);
           std::cout << "Client disconnected. [client_fd: " << client_fd << ']'
                     << std::endl;
+
+          /* client has exited */
+          std::vector<int>::iterator pos
+              = std::find (client_fds.begin (), client_fds.end (), client_fd);
+
+          if (pos != client_fds.end ())
+            client_fds.erase (pos);
+
           break;
         }
 
@@ -81,6 +89,8 @@ Server::run ()
             perror ("accept failed");
           break;
         }
+
+      add_client (client_fd);
 
       {
         std::lock_guard<std::mutex> lock (cout_mutex);
@@ -270,6 +280,7 @@ HttpServer::handle_client (int client_fd)
                                          cl - total_read);
                   if (bytes_read <= 0)
                     {
+                      goto rem_client;
                       break;
                     }
                   total_read += bytes_read;
@@ -314,6 +325,7 @@ HttpServer::handle_client (int client_fd)
       //     }
       // }
 
+      bool handled_client = false;
       for (RouteInfo &ri : routes)
         {
           std::lock_guard<std::mutex> lock (cout_mutex);
@@ -328,10 +340,33 @@ HttpServer::handle_client (int client_fd)
 
               send (client_fd, rs.c_str (), rs.size (), 0);
               ::close (client_fd);
+              handled_client = true;
               break;
             }
         }
+
+      if (!handled_client)
+        {
+          HttpResponse resp404;
+          resp404.status_code = HttpStatusEnum::NotFound;
+          resp404.status_message = get_status_message (resp404.status_code);
+
+          std::string rs = resp404.to_string ();
+
+          send (client_fd, rs.c_str (), rs.size (), 0);
+          ::close (client_fd);
+        }
       // }
+    }
+  else
+    {
+    rem_client:;
+      /* client has exited */
+      std::vector<int>::iterator pos
+          = std::find (client_fds.begin (), client_fds.end (), client_fd);
+
+      if (pos != client_fds.end ())
+        client_fds.erase (pos);
     }
 }
 
@@ -352,6 +387,8 @@ HttpServer::run ()
             perror ("accept failed");
           break;
         }
+
+      add_client (client_fd);
 
       {
         std::lock_guard<std::mutex> lock (cout_mutex);

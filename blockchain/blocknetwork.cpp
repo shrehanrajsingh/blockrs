@@ -15,13 +15,71 @@ Block::hash ()
   return to_hex (h, 32);
 }
 
-BlockNetwork::BlockNetwork () { /* create genesis block */ }
+BlockNetwork::BlockNetwork () : owner ("") {}
+BlockNetwork::BlockNetwork (Transaction &t) : owner ("")
+{
+  create_genesis_block (t);
+}
+
+BlockNetwork::BlockNetwork (Wallet &w) : owner ("")
+{
+  create_genesis_block_from_owner (w);
+}
+
+void
+BlockNetwork::create_genesis_block (Transaction &t)
+{
+  if (get_chain ().size ())
+    throw std::runtime_error ("Genesis block can only be created once");
+
+  owner = t.from;
+  add_transaction (t);
+
+  add_block ((Block){ .header = (BlockHeader){ .difficulty_target = 4,
+                                               .nonce = 10,
+                                               .prev_hash = "",
+                                               .timestamp = time (NULL),
+                                               .version = "0.0.1" } });
+
+  if (!get_chain ().size ())
+    throw std::runtime_error ("Error creating Genesis block");
+}
+
+void
+BlockNetwork::create_genesis_block_from_owner (Wallet &w)
+{
+  std::string owner = "0x" + to_hex (w.get_address ().data (), 20);
+  Transaction t = (Transaction){
+    .from = owner,
+    .to = owner,
+    .gas_price = GAS_PRICE_DEFAULT,
+    .gas_used = 2100.0,
+    .input_data = "",
+    .nonce = 10,
+    .symbol = "RS",
+    .timestamp = time (NULL),
+    .tr_fee = 2100.0f * GAS_PRICE_DEFAULT / 1000.0f,
+    .value = 210000 /* send 210k tokens */
+  };
+
+  w.sign_transaction (t);
+  create_genesis_block (t);
+}
 
 void
 BlockNetwork::add_block (Block &rhs)
 {
   chain.push_back (rhs);
   ch_map[chain.back ().hash ()] = chain.size () - 1;
+
+  verify_transactions ();
+  chain.back ().transactions_list = get_pending_transactions ();
+  chain.back ().header.timestamp = time (NULL);
+
+  for (Transaction &t : chain.back ().transactions_list)
+    t.status = TransactionStatusEnum::Success;
+
+  get_pending_transactions ().clear ();
 
   if (chain.size () > 1)
     chain.back ().header.prev_hash = chain[chain.size () - 2].hash ();
@@ -33,8 +91,36 @@ BlockNetwork::add_block (Block &&rhs)
   chain.push_back (std::move (rhs));
   ch_map[chain.back ().hash ()] = chain.size () - 1;
 
+  verify_transactions ();
+  chain.back ().transactions_list = get_pending_transactions ();
+
+  for (Transaction &t : chain.back ().transactions_list)
+    t.status = TransactionStatusEnum::Success;
+
+  get_pending_transactions ().clear ();
+
   if (chain.size () > 1)
     chain.back ().header.prev_hash = chain[chain.size () - 2].hash ();
+}
+
+void
+BlockNetwork::add_transaction (Transaction &t)
+{
+  transactions_pending.push_back (t);
+
+  Transaction &bk = transactions_pending.back ();
+  bk.status = TransactionStatusEnum::Pending;
+  bk.block_num = chain.size ();
+}
+
+void
+BlockNetwork::add_transaction (Transaction &&t)
+{
+  transactions_pending.push_back (std::move (t));
+
+  Transaction &bk = transactions_pending.back ();
+  bk.status = TransactionStatusEnum::Pending;
+  bk.block_num = chain.size ();
 }
 
 Block &
@@ -100,6 +186,8 @@ BlockNetwork::to_string ()
 {
   json_t j;
   std::vector<JsonObject *> blocks;
+  std::vector<JsonObject *> trns_pending;
+  std::vector<JsonObject *> trns_rej;
 
   for (Block &block : chain)
     {
@@ -108,10 +196,91 @@ BlockNetwork::to_string ()
       blocks.push_back (new JsonObject (jo));
     }
 
+  for (Transaction &t : transactions_pending)
+    {
+      json_t *jo = new json_t;
+      *jo = json_t::from_string (t.to_string ());
+      trns_pending.push_back (new JsonObject (jo));
+    }
+
+  for (Transaction &t : transactions_rejected)
+    {
+      json_t *jo = new json_t;
+      *jo = json_t::from_string (t.to_string ());
+      trns_rej.push_back (new JsonObject (jo));
+    }
+
   J (j["blocks"]) = blocks;
+  J (j["owner"]) = owner;
+  J (j["transactions_pending"]) = trns_pending;
+  J (j["transactions_rejected"]) = trns_rej;
+
   std::string result = j.to_string ();
   dbg ("BlockNetwork::to_string(): " << result);
   return result;
+}
+
+void
+BlockNetwork::verify_transactions ()
+{
+  std::vector<size_t> rej_idxs;
+  size_t i = 0;
+
+  for (Transaction &t : transactions_pending)
+    {
+      std::string str_sign = t.to_string_sign ();
+
+      uint8_t h[32];
+      const char *ss = str_sign.c_str ();
+      SHA256 (reinterpret_cast<const uint8_t *> (ss), str_sign.size (), h);
+      std::vector<uint8_t> h_vec (h, h + 32);
+
+      std::vector<uint8_t> pk;
+      if (!recover_public_key (h_vec, from_hex (t.signature), pk))
+        {
+          /* invalid transaction */
+          rej_idxs.push_back (i);
+          i++;
+          continue;
+        }
+
+      if (!Wallet::verify_with_pubkey (pk, t.signature, str_sign))
+        {
+          /* invalud transaction */
+          rej_idxs.push_back (i);
+          i++;
+          continue;
+        }
+
+      i++;
+    }
+
+  std::vector<Transaction> tr_new;
+
+  for (size_t i = 0; i < transactions_pending.size (); i++)
+    {
+      if (std::find (rej_idxs.begin (), rej_idxs.end (), i) != rej_idxs.end ())
+        {
+          transactions_pending[i].status = TransactionStatusEnum::Rejected;
+          transactions_rejected.push_back (transactions_pending[i]);
+        }
+      else
+        tr_new.push_back (transactions_pending[i]);
+    }
+
+  transactions_pending = tr_new;
+}
+
+bool
+BlockNetwork::valid_chain ()
+{
+  for (size_t i = 1; i < chain.size (); i++)
+    {
+      if (chain[i].header.prev_hash != chain[i - 1].hash ())
+        return false;
+    }
+
+  return true;
 }
 
 } // namespace rs::block
