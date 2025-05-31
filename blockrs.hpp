@@ -12,4 +12,6 @@
 #include "blockchain/transaction.hpp"
 #include "blockchain/wallet.hpp"
 
+#include "argparser.hpp"
+
 #endif // BLOCKRS_H

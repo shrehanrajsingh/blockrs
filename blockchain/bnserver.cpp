@@ -369,7 +369,6 @@ You can use this server to create and manage your own blockchain network.
 window.onload = () => {
 const toggle = document.getElementById('theme-toggle');
 
-// Check for saved theme preference or use device preference
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme === 'dark') {
 document.body.classList.add('dark-mode');
@@ -378,7 +377,6 @@ toggle.textContent = 'Toggle Light Mode';
 document.body.classList.add('light-mode');
 }
 
-// Toggle theme on button click
 toggle.addEventListener('click', () => {
 if (document.body.classList.contains('dark-mode')) {
 document.body.classList.replace('dark-mode', 'light-mode');
@@ -427,6 +425,93 @@ BlocknetServer::route_bn_nodes (HttpRequest _Req)
   return resp;
 }
 
+HttpResponse
+BlocknetServer::route_bn_add_node (HttpRequest req)
+{
+  dbg ("inside '/addnode'");
+  HttpResponse resp;
+
+  dbg ("req body: " << req.body);
+  json_t jreq = json_t::from_string (req.body);
+
+  //   if (!jreq.has_key ("bnt_url"))
+  //     {
+  //       resp.status_code = HttpStatusEnum::BadRequest;
+  //       resp.status_message = get_status_message (resp.status_code);
+  //       resp.add_body (JSON_RAW ({ "error" : "BlocknetServer URL not found"
+  //       })); return resp;
+  //     }
+
+  if (!jreq.has_key ("ns_url"))
+    {
+      resp.status_code = HttpStatusEnum::BadRequest;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.add_body (JSON_RAW ({ "error" : "NodeServer URL not found" }));
+      return resp;
+    }
+
+  std::string node_url
+      = std::string (BKRS_SERVER_URL) + ":" + std::to_string (get_port ());
+  std::string nsurl = jreq["ns_url"]->as_string ();
+
+  for (Node *&n : nodes)
+    {
+      if (n->get_ns_url () == nsurl)
+        {
+          resp.status_code = HttpStatusEnum::BadRequest;
+          resp.status_message = get_status_message (resp.status_code);
+          resp.add_body (JSON_RAW ({ "error" : "Node already exists" }));
+          return resp;
+        }
+    }
+
+  dbg ("node_url: " << node_url << "\nnsurl: " << nsurl);
+
+  size_t colon_pos = node_url.rfind (':');
+  if (colon_pos == std::string::npos)
+    {
+      resp.status_code = HttpStatusEnum::BadRequest;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.add_body (JSON_RAW ({
+        "error" : "Invalid node URL format. Expected format: host:port"
+      }));
+      return resp;
+    }
+
+  std::string host = node_url.substr (0, colon_pos);
+  std::string port_str = node_url.substr (colon_pos + 1);
+
+  dbg ("host: " << host << "\nport_str: " << port_str);
+
+  int port;
+  try
+    {
+      port = std::stoi (port_str);
+    }
+  catch (const std::exception &e)
+    {
+      resp.status_code = HttpStatusEnum::BadRequest;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.add_body (JSON_RAW ({ "error" : "Invalid port number" }));
+      return resp;
+    }
+
+  //   std::cout << host << ":" << port << std::endl;
+  //   std::cout << fetch_GET (host, port, "/info") << std::endl;
+
+  Node *n = new Node (NodeTypeEnum::Full, nsurl);
+  add_node (n);
+
+  resp.status_code = HttpStatusEnum::OK;
+  resp.status_message = get_status_message (resp.status_code);
+
+  resp.head_map[HttpHeaderEnum::ContentLength]
+      = parse_header ("Content-Type: application/json");
+
+  resp.add_body (JSON_RAW ({ "message" : "Connected successfully" }));
+  return resp;
+}
+
 void
 BlocknetServer::add_route (std::string path, std::vector<std::string> ar,
                            std::function<HttpResponse (HttpRequest)> cb)
@@ -451,5 +536,9 @@ BlocknetServer::add_routes ()
 
   add_route ("/nodes", { "GET", "HEAD" },
              [this] (HttpRequest req) { return this->route_bn_nodes (req); });
+
+  add_route ("/addnode", { "POST" }, [this] (HttpRequest req) {
+    return this->route_bn_add_node (req);
+  });
 }
 } // namespace rs::block

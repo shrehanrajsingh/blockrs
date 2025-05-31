@@ -1,6 +1,10 @@
 #if !defined(HEADER_H)
 #define HEADER_H
 
+#ifdef _WIN32
+#error "Win32 platforms are not supported."
+#endif
+
 #include <fstream>
 #include <functional>
 #include <initializer_list>

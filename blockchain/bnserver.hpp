@@ -27,6 +27,9 @@ class BlocknetServer : public _Server_Base
   /* list all nodes */
   _RURL ("/nodes") REQ ("GET", "HEAD") ROUTE (bn_nodes);
 
+  /* add a node */
+  _RURL ("/addnode") REQ ("POST") ROUTE (bn_add_node);
+
 public:
   BlocknetServer ();
   ~BlocknetServer ();

@@ -104,7 +104,6 @@
       window.onload = () => {
         const toggle = document.getElementById("theme-toggle");
 
-        // Check for saved theme preference or use device preference
         const savedTheme = localStorage.getItem("theme");
         if (savedTheme === "dark") {
           document.body.classList.add("dark-mode");
@@ -113,7 +112,6 @@
           document.body.classList.add("light-mode");
         }
 
-        // Toggle theme on button click
         toggle.addEventListener("click", () => {
           if (document.body.classList.contains("dark-mode")) {
             document.body.classList.replace("dark-mode", "light-mode");

@@ -2,6 +2,9 @@
 
 #define TEST(X) test##X ()
 
+int gArgc;
+char **gArgv;
+
 void
 test1 ()
 {
@@ -388,13 +391,111 @@ test10 ()
   bns.run ();
 }
 
+void
+test11 ()
+{
+  using namespace rs::block;
+  using namespace rs::json;
+
+  rs::ArgumentParser parser (
+      "blockrs",
+      "A Program to Simulate Blockchain Networks, Nodes and Wallets Locally");
+
+  /* rs::Argument &h =  */ parser.add_argument (
+      "help", "h", "help", "Display this help message", false, true);
+
+  rs::Argument &a = parser.add_argument (
+      "server", "s", "server",
+      "Type of Server you wish to create. [ chain | node | wallet ]", false,
+      false, "chain");
+
+  a.set_validator ([] (const std::string &value) {
+    return value == "chain" || value == "node" || value == "wallet";
+  });
+
+  if (!parser.parse (gArgc, gArgv))
+    {
+      parser.print_help ();
+      return;
+    }
+
+  if (parser.has ("help") || gArgc < 2)
+    {
+      parser.print_help ();
+      return;
+    }
+
+  std::string server_type = parser.get ("server");
+
+  if (server_type == "chain")
+    {
+      Wallet w (
+          "0x423df74376ecb588240106471ae521e576574893f6a5df013950ebfb733fd214",
+          "0x04e057b29ab631df1d061118ba51966684fceb1de440a70a1cf3da789c0afda8f"
+          "9f8a"
+          "916c15063443b8787a85f8f9091bebaded3c0aef8fa8d46031a5c74da65fd",
+          "0x9665a13fece00de1f60183822d55ac180484ac1d");
+
+      BlockNetwork bn (w);
+
+      Transaction t = { .from = "0x9665a13fece00de1f60183822d55ac180484ac1d",
+                        .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
+                        .gas_price = 50.0f,
+                        .gas_used = 2100.0f,
+                        .input_data = "",
+                        .nonce = 10,
+                        .status = TransactionStatusEnum::Pending,
+                        .symbol = "RS",
+                        .timestamp = time (NULL),
+                        .tr_fee = (2100 * 50) / 1000.0f,
+                        .value = 50 };
+
+      w.sign_transaction (t);
+      bn.add_transaction (t);
+
+      std::cout << bn.to_string ();
+
+      if (bn.valid_chain ())
+        std::cout << "Chain is valid!" << std::endl;
+      else
+        std::cout << "Chain is invalid!" << std::endl;
+
+      // Node *n = new Node (NodeTypeEnum::Full, "", "");
+
+      BlocknetServer bns;
+      bns.set_port (8000);
+      // bns.add_node (n);
+
+      bns.run ();
+    }
+
+  else if (server_type == "node")
+    {
+      NodeServer ns;
+      ns.set_port (8100);
+
+      Node *n = new Node (NodeTypeEnum::Full, "", "");
+      ns.set_node (n);
+
+      ns.run ();
+    }
+
+  else if (server_type == "wallet")
+    {
+      dbg ("Wallet Server not implemented yet");
+    }
+}
+
 int
 main (int argc, char const *argv[])
 {
+  gArgc = argc;
+  gArgv = (char **)argv;
+
   using namespace rs::block;
   using namespace rs::util;
 
-  TEST (10);
+  TEST (11);
 
   return 0;
 }

@@ -59,6 +59,7 @@ add_library(blockrs
     blockchain/nodeserver.hpp blockchain/nodeserver.cpp
     blockchain/bnserver.hpp blockchain/bnserver.cpp
 
+    argparser.hpp argparser.cpp
     blockrs.hpp blockrs.cpp)
 
 target_include_directories(

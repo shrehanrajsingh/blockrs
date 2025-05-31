@@ -190,7 +190,7 @@ NodeServer::run ()
         {
           if (get_is_running ())
             perror ("accept failed");
-          break;
+          return;
         }
 
       add_client (client_fd);
@@ -290,10 +290,143 @@ NodeServer::route_top (HttpRequest req)
   resp.status_code = HttpStatusEnum::OK;
   resp.status_message = get_status_message (resp.status_code);
 
-  resp.add_body (""
-                 "<html> <head><title> NodeServer</title></head><body>    \
-              <h1> NodeServer</h1><p> Welcome to NodeServer</p></body>  \
-              </html>");
+  // clang-format off
+  resp.add_body (
+    HTML_RAW (
+<html>
+<head>
+<title>BlockRS::NodeServer</title>
+<style>
+:root {
+--bg-color: #f8f8f8;
+--text-color: #333;
+--heading-color: #2c3e50;
+--link-color: #3498db;
+}
+
+@media (prefers-color-scheme: dark) {
+:root {
+--bg-color: #222;
+--text-color: #f0f0f0;
+--heading-color: #60a5fa;
+--link-color: #60a5fa;
+}
+}
+
+body.light-mode {
+--bg-color: #f8f8f8;
+--text-color: #333;
+--heading-color: #2c3e50;
+--link-color: #3498db;
+}
+
+body.dark-mode {
+--bg-color: #222;
+--text-color: #f0f0f0;
+--heading-color: #60a5fa;
+--link-color: #60a5fa;
+}
+
+body {
+font-family: Arial, sans-serif;
+line-height: 1.6;
+margin: 0;
+padding: 20px;
+background-color: var(--bg-color);
+color: var(--text-color);
+transition: background-color 0.3s, color 0.3s;
+}
+.container {
+max-width: 800px;
+margin: 0 auto;
+padding: 20px;
+}
+h1 {
+color: var(--heading-color);
+}
+a {
+color: var(--link-color);
+}
+
+.theme-toggle {
+background: none;
+border: 1px solid var(--text-color);
+border-radius: 4px;
+color: var(--text-color);
+padding: 5px 10px;
+cursor: pointer;
+margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<button class="theme-toggle" id="theme-toggle">Toggle Dark Mode</button>
+<h1>NodeServer</h1>
+<p>
+Welcome to NodeServer. This server is designed to run as a blockchain
+node.
+<br />
+You can use this server to connect to and participate in blockchain
+networks.
+<br />
+<br />
+<strong>Note:</strong> This is a template for a blockchain node server.
+You can customize it to suit your specific blockchain requirements.
+<br />
+<strong>Important:</strong> This node server is not intended for
+production use. It is meant for testing and development purposes only.
+<br />
+<strong>Warning:</strong> Do not use this node for any sensitive or
+confidential transactions. Always verify security before production use.
+<br />
+<strong>Disclaimer:</strong> The developer of this node server is not
+responsible for any loss or damage caused by the use of this server. Use
+it at your own risk.
+<br />
+<strong>License:</strong> This server is licensed under the MIT License.
+You can use it for any purpose, but you must include the original
+license and copyright notice in any derivative works.
+<br />
+<strong>Contact:</strong> If you have any questions or feedback, please
+contact the developer at
+<a href="mailto:shrehanofficial@gmail.com">his email</a>
+</p>
+</div>
+
+<script>
+window.onload = () => {
+const toggle = document.getElementById("theme-toggle");
+
+const savedTheme = localStorage.getItem("theme");
+if (savedTheme === "dark") {
+document.body.classList.add("dark-mode");
+toggle.textContent = "Toggle Light Mode";
+} else if (savedTheme === "light") {
+document.body.classList.add("light-mode");
+}
+
+toggle.addEventListener("click", () => {
+if (document.body.classList.contains("dark-mode")) {
+document.body.classList.replace("dark-mode", "light-mode");
+localStorage.setItem("theme", "light");
+toggle.textContent = "Toggle Dark Mode";
+} else {
+document.body.classList.replace("light-mode", "dark-mode");
+localStorage.setItem("theme", "dark");
+toggle.textContent = "Toggle Light Mode";
+}
+});
+};
+</script>
+</body>
+</html>
+
+
+    )
+  );
+
+  // clang-format on
 
   return resp;
 }
@@ -301,6 +434,7 @@ NodeServer::route_top (HttpRequest req)
 HttpResponse
 NodeServer::route_info (HttpRequest req)
 {
+  dbg ("inside '/info'");
   switch (req.request_type.type)
     {
     case HttpRequestTypeEnum::Get:
@@ -336,6 +470,7 @@ HttpResponse
 NodeServer::route_connect_to_chain (HttpRequest req)
 {
   HttpResponse resp;
+  dbg ("Inside '/connect'");
 
   if (!node)
     {
@@ -353,7 +488,7 @@ NodeServer::route_connect_to_chain (HttpRequest req)
 
   json_t jreq = json_t::from_string (req.body);
 
-  if (!jreq.has_key ("url"))
+  if (!jreq.has_key ("bnt_url"))
     {
       resp.status_code = HttpStatusEnum::Unauthorized;
       resp.status_message = get_status_message (resp.status_code);
@@ -364,8 +499,87 @@ NodeServer::route_connect_to_chain (HttpRequest req)
       return resp;
     }
 
-  std::string url = jreq["url"]->as_string ();
-  node->set_bnt_url (url);
+  std::string url = jreq["bnt_url"]->as_string ();
+
+  size_t colon_pos = url.find (':');
+  if (colon_pos == std::string::npos)
+    {
+      resp.status_code = HttpStatusEnum::BadRequest;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      resp.add_body (JSON_RAW ({
+        "error" : "Invalid node URL format. Expected format: host:port"
+      }));
+      return resp;
+    }
+
+  std::string host = url.substr (0, colon_pos);
+  std::string port_str = url.substr (colon_pos + 1);
+
+  int port;
+  try
+    {
+      port = std::stoi (port_str);
+    }
+  catch (const std::exception &e)
+    {
+      resp.status_code = HttpStatusEnum::BadRequest;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      resp.add_body (JSON_RAW ({ "error" : "Invalid port number" }));
+      return resp;
+    }
+
+  json_t jc;
+  J (jc["ns_url"])
+      = std::string (BKRS_SERVER_URL) + ":" + std::to_string (get_port ());
+
+  dbg ("jc: " << jc.to_string ());
+  std::string urs;
+
+  try
+    {
+      urs = fetch_POST (host, port, "/addnode", jc.to_string ());
+    }
+  catch (const std::exception &e)
+    {
+      std::cerr << e.what () << '\n';
+      resp.status_code = HttpStatusEnum::InternalServerError;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      resp.add_body (JSON_RAW ({ "error" : "Internal Server Error" }));
+      return resp;
+    }
+
+  dbg ("urs Response: " << urs);
+
+  if (urs.find ("OK") != std::string::npos)
+    node->set_bnt_url (url);
+  else
+    {
+      resp.status_code = HttpStatusEnum::InternalServerError;
+      resp.status_message = get_status_message (resp.status_code);
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      resp.add_body (std::string ("{") + urs.substr (urs.find ("\"error\"")));
+      return resp;
+    }
+
+  resp.status_code = HttpStatusEnum::OK;
+  resp.status_message = get_status_message (resp.status_code);
+
+  resp.head_map[HttpHeaderEnum::ContentLength]
+      = parse_header ("Content-Type: application/json");
+
+  resp.add_body (JSON_RAW ({ "message" : "Connected successfully" }));
+  return resp;
 }
 
 void
