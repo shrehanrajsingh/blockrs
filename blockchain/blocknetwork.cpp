@@ -106,21 +106,37 @@ BlockNetwork::add_block (Block &&rhs)
 void
 BlockNetwork::add_transaction (Transaction &t)
 {
-  transactions_pending.push_back (t);
-
-  Transaction &bk = transactions_pending.back ();
-  bk.status = TransactionStatusEnum::Pending;
-  bk.block_num = chain.size ();
+  try
+    {
+      transactions_pending.push_back (t);
+      Transaction &bk = transactions_pending.back ();
+      bk.status = TransactionStatusEnum::Pending;
+      bk.block_num = chain.size () - 1;
+    }
+  catch (const std::exception &e)
+    {
+      std::cerr << e.what () << '\n';
+      return;
+    }
 }
 
 void
 BlockNetwork::add_transaction (Transaction &&t)
 {
-  transactions_pending.push_back (std::move (t));
+  try
+    {
 
-  Transaction &bk = transactions_pending.back ();
-  bk.status = TransactionStatusEnum::Pending;
-  bk.block_num = chain.size ();
+      transactions_pending.push_back (std::move (t));
+
+      Transaction &bk = transactions_pending.back ();
+      bk.status = TransactionStatusEnum::Pending;
+      bk.block_num = chain.size () - 1;
+    }
+  catch (const std::exception &e)
+    {
+      std::cerr << e.what () << '\n';
+      return;
+    }
 }
 
 Block &
@@ -210,6 +226,7 @@ BlockNetwork::to_string ()
       trns_rej.push_back (new JsonObject (jo));
     }
 
+  dbg ("trns_rej_size: " << trns_rej.size ());
   J (j["blocks"]) = blocks;
   J (j["owner"]) = owner;
   J (j["transactions_pending"]) = trns_pending;
@@ -262,7 +279,7 @@ BlockNetwork::verify_transactions ()
       if (std::find (rej_idxs.begin (), rej_idxs.end (), i) != rej_idxs.end ())
         {
           transactions_pending[i].status = TransactionStatusEnum::Rejected;
-          transactions_rejected.push_back (transactions_pending[i]);
+          get_rejected_transactions ().push_back (transactions_pending[i]);
         }
       else
         tr_new.push_back (transactions_pending[i]);

@@ -60,6 +60,12 @@ public:
     return type;
   }
 
+  inline const JsonType &
+  get_type () const
+  {
+    return type;
+  }
+
   JsonObject &operator= (const JsonObject &);
   friend std::ostream &operator<< (std::ostream &, JsonObject &);
 

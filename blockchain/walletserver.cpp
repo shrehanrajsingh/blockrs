@@ -168,7 +168,11 @@ WalletServer::route_ws_info (HttpRequest req)
 
   resp.status_code = HttpStatusEnum::OK;
   resp.status_message = get_status_message (resp.status_code);
-  resp.body = w.to_string ();
+
+  json_t jw = json_t::from_string (w.to_string ());
+  J (jw["private_key"]) = "<HIDDEN>";
+
+  resp.body = jw.to_string ();
 
   resp.head_map[HttpHeaderEnum::ContentLength]
       = parse_header ("Content-Length: " + std::to_string (resp.body.size ()));
@@ -181,6 +185,7 @@ WalletServer::route_ws_info (HttpRequest req)
 HttpResponse
 WalletServer::route_ws_sign (HttpRequest req)
 {
+  dbg ("wallet/sign reqbody: " << req.body);
   json_t j = json_t::from_string (req.body);
 
   HttpResponse resp;

@@ -15,6 +15,14 @@ std::string fetch_GET (const std::string &_Host, int _Port,
 std::string fetch_POST (const std::string &_Host, int _Port,
                         const std::string &_Path = "/",
                         std::string _Body = "");
+
+std::string fetch (const std::string &_Host, int _Port,
+                   const std::string &_ReqType = "GET",
+                   const std::string &_Path = "/", std::string _Body = "");
+
+std::string fetch (const std::string &_URL,
+                   const std::string &_ReqType = "GET",
+                   const std::string &_Path = "/", std::string _Body = "");
 } // namespace rs::block
 
 #endif // SERVER_H

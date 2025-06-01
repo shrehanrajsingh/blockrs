@@ -93,16 +93,23 @@ operator<< (std::ostream &out, JsonObject &lhs)
     {
     case JsonType::Array:
       {
-        out << "[";
-        bool first = true;
-        for (auto &item : lhs.jarray)
+        if (!lhs.jarray.size ())
           {
-            if (!first)
-              out << ", ";
-            first = false;
-            out << *item;
+            out << "[]";
           }
-        out << "]";
+        else
+          {
+            out << "[";
+            bool first = true;
+            for (auto &item : lhs.jarray)
+              {
+                if (!first)
+                  out << ", ";
+                first = false;
+                out << *item;
+              }
+            out << "]";
+          }
       }
       break;
     case JsonType::Boolean:
@@ -665,6 +672,7 @@ JsonContext::to_string ()
       if (!first)
         ss << ", ";
       first = false;
+      dbg ("key: " << key << "\tvalue << " << int (value->get_type ()));
       ss << "\"" << key << "\": " << *value;
     }
   ss << "}";
@@ -716,7 +724,8 @@ JsonObject::to_float () const
       return 0.0f;
     }
   else
-    throw std::invalid_argument ("Invalid conversion to float");
+    throw std::invalid_argument ("Invalid conversion to float of type "
+                                 + std::to_string (int (get_type ())));
 
   return 0.0f;
 }

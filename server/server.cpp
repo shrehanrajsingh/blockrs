@@ -161,4 +161,38 @@ fetch_POST (const std::string &host, int port, const std::string &path,
 
   return resp;
 }
+
+std::string
+fetch (const std::string &host, int port, const std::string &req,
+       const std::string &path, std::string body)
+{
+  if (req == "GET")
+    {
+      return fetch_GET (host, port, path, body);
+    }
+  else if (req == "POST")
+    {
+      return fetch_POST (host, port, path, body);
+    }
+  /* else if... */
+
+  return "";
+}
+
+std::string
+fetch (const std::string &url, const std::string &req, const std::string &path,
+       std::string body)
+{
+  size_t colon_pos = url.rfind (':');
+
+  if (colon_pos == std::string::npos)
+    throw std::invalid_argument ("Invalid url");
+
+  std::string host = url.substr (0, colon_pos);
+  std::string port_str = url.substr (colon_pos + 1);
+
+  int port = std::stoi (port_str);
+
+  return fetch (host, port, req, path, body);
+}
 } // namespace rs::block

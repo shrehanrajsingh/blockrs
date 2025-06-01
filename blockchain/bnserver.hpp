@@ -30,6 +30,17 @@ class BlocknetServer : public HttpServer
   /* add a node */
   _RURL ("/addnode") REQ ("POST") ROUTE (bn_add_node);
 
+  /**
+   * Transaction manager
+   * The GET request gives a form which
+   * can, when filled up, sends a POST
+   * request to self which adds the transaction
+   * to queue.
+   */
+  _RURL ("/transaction/new") REQ ("GET", "POST") ROUTE (bn_transaction_new);
+
+  _RURL ("/info") REQ ("GET") ROUTE (bn_info);
+
 public:
   BlocknetServer ();
   ~BlocknetServer ();
@@ -41,7 +52,6 @@ public:
   }
 
   void add_routes () override;
-
   void set_network (BlockNetwork *);
 
   inline BlockNetwork *&

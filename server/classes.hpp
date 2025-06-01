@@ -137,6 +137,8 @@ public:
 
   ~_Server_Base () {}
 };
+
+std::string read_file (std::string _Path);
 } // namespace rs::block
 
 #endif // SERVER_CLASSES_H

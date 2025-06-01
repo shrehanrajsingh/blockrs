@@ -364,6 +364,7 @@ test10 ()
                     .tr_fee = (2100 * 50) / 1000.0f,
                     .value = 50 };
 
+  t.hash ();
   w.sign_transaction (t);
   bn.add_transaction (t);
 
@@ -442,22 +443,23 @@ test11 ()
 
       BlockNetwork bn (w);
 
-      Transaction t = { .from = "0x9665a13fece00de1f60183822d55ac180484ac1d",
-                        .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
-                        .gas_price = 50.0f,
-                        .gas_used = 2100.0f,
-                        .input_data = "",
-                        .nonce = 10,
-                        .status = TransactionStatusEnum::Pending,
-                        .symbol = "RS",
-                        .timestamp = time (NULL),
-                        .tr_fee = (2100 * 50) / 1000.0f,
-                        .value = 50 };
+      // Transaction t = { .from =
+      // "0x9665a13fece00de1f60183822d55ac180484ac1d",
+      //                   .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
+      //                   .gas_price = 50.0f,
+      //                   .gas_used = 2100.0f,
+      //                   .input_data = "",
+      //                   .nonce = 10,
+      //                   .status = TransactionStatusEnum::Pending,
+      //                   .symbol = "RS",
+      //                   .timestamp = time (NULL),
+      //                   .tr_fee = (2100 * 50) / 1000.0f,
+      //                   .value = 50 };
 
-      w.sign_transaction (t);
-      bn.add_transaction (t);
+      // w.sign_transaction (t);
+      // bn.add_transaction (t);
 
-      std::cout << bn.to_string ();
+      // std::cout << bn.to_string ();
 
       if (bn.valid_chain ())
         std::cout << "Chain is valid!" << std::endl;
@@ -467,10 +469,8 @@ test11 ()
       // Node *n = new Node (NodeTypeEnum::Full, "", "");
 
       BlocknetServer bns;
-      /**
-       * TODO: add custom port
-       */
       bns.set_port (port);
+      bns.set_network (&bn);
       // bns.add_node (n);
 
       bns.run ();
