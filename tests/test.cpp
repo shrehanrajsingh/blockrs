@@ -413,6 +413,8 @@ test11 ()
     return value == "chain" || value == "node" || value == "wallet";
   });
 
+  parser.add_argument ("port", "p", "port", "Port of server");
+
   if (!parser.parse (gArgc, gArgv))
     {
       parser.print_help ();
@@ -426,9 +428,11 @@ test11 ()
     }
 
   std::string server_type = parser.get ("server");
+  int port;
 
   if (server_type == "chain")
     {
+      port = parser.has ("port") ? parser.get<int> ("port") : 8000;
       Wallet w (
           "0x423df74376ecb588240106471ae521e576574893f6a5df013950ebfb733fd214",
           "0x04e057b29ab631df1d061118ba51966684fceb1de440a70a1cf3da789c0afda8f"
@@ -463,7 +467,10 @@ test11 ()
       // Node *n = new Node (NodeTypeEnum::Full, "", "");
 
       BlocknetServer bns;
-      bns.set_port (8000);
+      /**
+       * TODO: add custom port
+       */
+      bns.set_port (port);
       // bns.add_node (n);
 
       bns.run ();
@@ -471,8 +478,9 @@ test11 ()
 
   else if (server_type == "node")
     {
+      port = parser.has ("port") ? parser.get<int> ("port") : 8100;
       NodeServer ns;
-      ns.set_port (8100);
+      ns.set_port (port);
 
       Node *n = new Node (NodeTypeEnum::Full, "", "");
       ns.set_node (n);
@@ -482,8 +490,25 @@ test11 ()
 
   else if (server_type == "wallet")
     {
-      dbg ("Wallet Server not implemented yet");
+      port = parser.has ("port") ? parser.get<int> ("port") : 9000;
+
+      WalletServer ws;
+      ws.set_port (port);
+
+      ws.run ();
     }
+}
+
+void
+test12 ()
+{
+  using namespace rs::block;
+  using namespace rs::json;
+
+  WalletServer ws;
+  ws.set_port (9000);
+
+  ws.run ();
 }
 
 int

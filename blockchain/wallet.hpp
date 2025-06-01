@@ -2,6 +2,7 @@
 #define WALLET_H
 
 #include "../header.hpp"
+#include "../json/json.hpp"
 #include "transaction.hpp"
 
 #include <secp256k1.h>
@@ -79,6 +80,7 @@ public:
                                   std::string _Message);
 
   void sign_transaction (Transaction &);
+  std::string to_string ();
 
   ~Wallet () {}
 };

@@ -12,7 +12,7 @@ namespace rs::block
 /**
  * Derived from HttpServer
  */
-class NodeServer : public _Server_Base
+class NodeServer : public HttpServer
 {
 private:
   struct sockaddr_in address;
@@ -31,19 +31,10 @@ public:
   NodeServer (Node *);
   ~NodeServer ();
 
-  void setup_socket () override;
-  void handle_client (int) override;
-  void run () override;
-  void close () override;
-
-  int get_port () override;
-  void set_port (int) override;
-  int get_max_clients () override;
-  void set_max_clients (int) override;
-
-  void add_routes ();
+  void add_routes () override;
 
   void set_node (Node *);
+
   inline Node *&
   get_node ()
   {
@@ -55,9 +46,6 @@ public:
   {
     return routes;
   }
-
-  void add_route (std::string _Path, std::vector<std::string> _AllowedRoutes,
-                  std::function<HttpResponse (HttpRequest)> _Callback);
 };
 } // namespace rs::block
 

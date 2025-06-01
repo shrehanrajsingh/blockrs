@@ -13,7 +13,7 @@ namespace rs::block
 /**
  * Derived from HttpServer
  */
-class BlocknetServer : public _Server_Base
+class BlocknetServer : public HttpServer
 {
   struct sockaddr_in address;
   int addrlen = 0;
@@ -34,25 +34,16 @@ public:
   BlocknetServer ();
   ~BlocknetServer ();
 
-  void setup_socket () override;
-  void handle_client (int) override;
-  void run () override;
-  void close () override;
-
-  int get_port () override;
-  void set_port (int) override;
-  int get_max_clients () override;
-  void set_max_clients (int) override;
-
   inline std::vector<RouteInfo> &
   get_routes ()
   {
     return routes;
   }
 
-  void add_routes ();
+  void add_routes () override;
 
   void set_network (BlockNetwork *);
+
   inline BlockNetwork *&
   get_network ()
   {
@@ -61,14 +52,12 @@ public:
 
   void add_node (Node *);
   void remove_node (size_t);
+
   inline std::vector<Node *> &
   get_nodes ()
   {
     return nodes;
   }
-
-  void add_route (std::string _Path, std::vector<std::string> _AllowedRoutes,
-                  std::function<HttpResponse (HttpRequest)> _Callback);
 };
 } // namespace rs::block
 

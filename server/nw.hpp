@@ -84,8 +84,14 @@ public:
     return routes;
   }
 
-  void add_route (std::string _Path, std::vector<std::string> _AllowedRoutes,
-                  std::function<HttpResponse (HttpRequest)> _Callback);
+  virtual void add_route (std::string _Path,
+                          std::vector<std::string> _AllowedRoutes,
+                          std::function<HttpResponse (HttpRequest)> _Callback);
+
+  virtual void
+  add_routes ()
+  {
+  }
 };
 } // namespace rs::block
 

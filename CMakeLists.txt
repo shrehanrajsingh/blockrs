@@ -58,6 +58,7 @@ add_library(blockrs
     blockchain/wallet.hpp blockchain/wallet.cpp
     blockchain/nodeserver.hpp blockchain/nodeserver.cpp
     blockchain/bnserver.hpp blockchain/bnserver.cpp
+    blockchain/walletserver.hpp blockchain/walletserver.cpp
 
     argparser.hpp argparser.cpp
     blockrs.hpp blockrs.cpp)

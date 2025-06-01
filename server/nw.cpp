@@ -52,7 +52,7 @@ Server::handle_client (int client_fd)
 
       if (bytes_r <= 0)
         {
-          std::lock_guard<std::mutex> lock (cout_mutex);
+          // std::lock_guard<std::mutex> lock (cout_mutex);
           std::cout << "Client disconnected. [client_fd: " << client_fd << ']'
                     << std::endl;
 
@@ -67,7 +67,7 @@ Server::handle_client (int client_fd)
         }
 
       {
-        std::lock_guard<std::mutex> lock (cout_mutex);
+        // std::lock_guard<std::mutex> lock (cout_mutex);
         std::cout << "Received: " << buffer;
       }
     }
@@ -93,7 +93,7 @@ Server::run ()
       add_client (client_fd);
 
       {
-        std::lock_guard<std::mutex> lock (cout_mutex);
+        // std::lock_guard<std::mutex> lock (cout_mutex);
         std::cout << "New client connected! [client_fd: " << client_fd << ']'
                   << std::endl;
       }
@@ -328,7 +328,7 @@ HttpServer::handle_client (int client_fd)
       bool handled_client = false;
       for (RouteInfo &ri : routes)
         {
-          std::lock_guard<std::mutex> lock (cout_mutex);
+          // std::lock_guard<std::mutex> lock (cout_mutex);
           auto iv
               = std::find (ri.allowed_requests.begin (),
                            ri.allowed_requests.end (), hr.request_type.type);
@@ -373,6 +373,7 @@ HttpServer::handle_client (int client_fd)
 void
 HttpServer::run ()
 {
+  add_routes ();
   setup_socket ();
   set_is_running (true);
 
@@ -391,7 +392,7 @@ HttpServer::run ()
       add_client (client_fd);
 
       {
-        std::lock_guard<std::mutex> lock (cout_mutex);
+        // std::lock_guard<std::mutex> lock (cout_mutex);
         std::cout << "Client connected! [client_fd: " << client_fd << ']'
                   << std::endl;
       }

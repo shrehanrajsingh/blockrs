@@ -331,4 +331,17 @@ recover_public_key (const std::vector<uint8_t> &msg_hash,
   return true;
 }
 
+std::string
+Wallet::to_string ()
+{
+  json::json_t j;
+
+  J (j["public_key"])
+      = to_hex (get_public_key ().data (), get_public_key ().size ());
+  J (j["private_key"]) = to_hex (get_private_key ().data (), 32);
+  J (j["address"]) = to_hex (get_address ().data (), 20);
+
+  return j.to_string ();
+}
+
 } // namespace rs::block
