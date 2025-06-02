@@ -90,7 +90,8 @@ test3 ()
                                   "   \"arr\": [1, \"hello\", {"
                                   "         \"a\": true,"
                                   "         \"b\": null"
-                                  "}, 4, 5]"
+                                  "}, 4, 5],"
+                                  "   \"arr2\": []"
                                   "}");
 
   std::cout << j.to_string () << std::endl;

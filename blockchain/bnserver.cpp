@@ -801,6 +801,65 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
 }
 
 HttpResponse
+BlocknetServer::route_bn_transaction_all (HttpRequest req)
+{
+  HttpResponse resp;
+  json_t j;
+
+  if (blockchain == nullptr)
+    {
+      resp.status_code = HttpStatusEnum::BadGateway;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body = JSON_RAW (
+          { "error" : "Server is not connected to a blockchain network." });
+
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      return resp;
+    }
+
+  std::vector<JsonObject *> tr_pending;
+  std::vector<JsonObject *> tr_rej;
+
+  for (Transaction &i : blockchain->get_pending_transactions ())
+    {
+      json_t *jv = new json_t;
+      *jv = json_t::from_string (i.to_string ());
+
+      tr_pending.push_back (new JsonObject (jv));
+    }
+
+  for (Transaction &i : blockchain->get_rejected_transactions ())
+    {
+      json_t *jv = new json_t;
+      *jv = json_t::from_string (i.to_string ());
+
+      tr_rej.push_back (new JsonObject (jv));
+    }
+
+  J (j["transaction_pending"]) = tr_pending;
+  J (j["transaction_rejected"]) = tr_rej;
+
+  resp.status_code = HttpStatusEnum::OK;
+  resp.status_message = get_status_message (resp.status_code);
+
+  resp.body = j.to_string ();
+
+  resp.head_map[HttpHeaderEnum::ContentLength]
+      = parse_header ("Content-Length: " + std::to_string (resp.body.size ()));
+
+  resp.head_map[HttpHeaderEnum::ContentType]
+      = parse_header ("Content-Type: application/json");
+
+  return resp;
+}
+
+HttpResponse
 BlocknetServer::route_bn_info (HttpRequest req)
 {
   json_t jresp;
@@ -853,6 +912,10 @@ BlocknetServer::add_routes ()
     return this->route_bn_transaction_new (req);
   });
 
+  add_route ("/transaction/all", { "GET", "POST" }, [this] (HttpRequest req) {
+    return this->route_bn_transaction_all (req);
+  });
+
   add_route ("/info", { "GET" },
              [this] (HttpRequest req) { return this->route_bn_info (req); });
 }
@@ -878,14 +941,14 @@ BlocknetServer::fetch_nodes ()
   if (blockchain == nullptr)
     return;
 
-  dbg ("here_in_fetch_nodes1");
+  Node *mlc_node = nullptr;
+
   for (Node *&i : nodes)
     {
       if (!i->get_bnt_url ().size ())
         continue;
 
       std::string info_r;
-      dbg ("here_in_fetch_nodes2");
 
       try
         {
@@ -896,7 +959,6 @@ BlocknetServer::fetch_nodes ()
           std::cerr << e.what () << '\n';
         }
 
-      dbg ("here_in_fetch_nodes3");
       dbg ("info_r: " << info_r);
 
       size_t bidx = info_r.find ("\r\n\r\n");
@@ -907,6 +969,41 @@ BlocknetServer::fetch_nodes ()
       info_r = info_r.substr (bidx + 1);
 
       *i = Node::from_string (info_r);
+    }
+
+  for (Node *&i : nodes)
+    {
+      if (mlc_node == nullptr
+          || (i->get_blocks ().size () > mlc_node->get_blocks ().size ()))
+        mlc_node = i;
+    }
+
+  /* replace main chain with longest chain in node */
+  /* also send an update request to other nodes */
+  if (mlc_node != nullptr) /* TBH this statement will always be true, except
+                              when there are no nodes */
+    {
+      std::vector<Block> nchain;
+      for (Block *&b : mlc_node->get_blocks ())
+        nchain.push_back (*b);
+
+      blockchain->get_chain () = nchain;
+
+      for (Node *&i : nodes)
+        {
+          if (i == mlc_node)
+            continue;
+
+          try
+            {
+              fetch (i->get_ns_url (), "GET", "/update",
+                     blockchain->to_string ());
+            }
+          catch (const std::exception &e)
+            {
+              std::cerr << e.what () << '\n';
+            }
+        }
     }
 }
 } // namespace rs::block

@@ -1,4 +1,5 @@
 #include "nodeserver.hpp"
+#include "blocknetwork.hpp"
 
 namespace rs::block
 {
@@ -350,6 +351,95 @@ NodeServer::route_mine (HttpRequest req)
   return resp;
 }
 
+HttpResponse
+NodeServer::route_update (HttpRequest req)
+{
+  HttpResponse resp;
+
+  if (node == nullptr)
+    {
+      resp.status_code = HttpStatusEnum::InternalServerError;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body
+          = JSON_RAW ({ "error" : "NodeServer is not connected to a Node" });
+
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+
+      return resp;
+    }
+
+  dbg ("req.body: " << req.body);
+  json_t ji = json_t::from_string (req.body);
+
+  dbg ("ji: " << ji.to_string ());
+
+  // if (!ji.has_key ("chain_info"))
+  //   {
+  //     resp.status_code = HttpStatusEnum::InternalServerError;
+  //     resp.status_message = get_status_message (resp.status_code);
+
+  //     resp.body = JSON_RAW ({ "error" : "Missing parameter 'chain_info'" });
+
+  //     resp.head_map[HttpHeaderEnum::ContentType]
+  //         = parse_header ("Content-Type: application/json");
+  //     resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+  //         "Content-Length: " + std::to_string (resp.body.size ()));
+
+  //     return resp;
+  //   }
+
+  // json_t *jci = ji["chain_info"]->as_object ();
+
+  // if (!jci->has_key ("blocks"))
+  if (!ji.has_key ("blocks"))
+    {
+      resp.status_code = HttpStatusEnum::InternalServerError;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body = JSON_RAW ({ "error" : "Missing parameter 'blocks'" });
+
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+
+      return resp;
+    }
+
+  const std::vector<JsonObject *> &blks = ji["blocks"]->as_array ();
+  std::vector<Block *> nchain;
+
+  dbg ("blk_size: " << blks.size ());
+  for (JsonObject *i : blks)
+    {
+      std::stringstream ss;
+      ss << *i;
+
+      Block *bp = new Block;
+      *bp = Block::from_string (ss.str ());
+
+      nchain.push_back (bp);
+    }
+
+  node->get_blocks () = nchain;
+
+  resp.status_code = HttpStatusEnum::OK;
+  resp.status_message = get_status_message (resp.status_code);
+
+  resp.body = JSON_RAW ({ "message" : "Chain updated successfully" });
+
+  resp.head_map[HttpHeaderEnum::ContentType]
+      = parse_header ("Content-Type: application/json");
+  resp.head_map[HttpHeaderEnum::ContentLength]
+      = parse_header ("Content-Length: " + std::to_string (resp.body.size ()));
+
+  return resp;
+}
+
 void
 NodeServer::add_routes ()
 {
@@ -365,6 +455,9 @@ NodeServer::add_routes ()
 
   add_route ("/mine", { "GET" },
              [this] (HttpRequest req) { return this->route_mine (req); });
+
+  add_route ("/update", { "GET" },
+             [this] (HttpRequest req) { return this->route_update (req); });
 }
 
 void

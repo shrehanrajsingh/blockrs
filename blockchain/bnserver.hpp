@@ -38,6 +38,7 @@ class BlocknetServer : public HttpServer
    * to queue.
    */
   _RURL ("/transaction/new") REQ ("GET", "POST") ROUTE (bn_transaction_new);
+  _RURL ("/transaction/all") REQ ("GET", "POST") ROUTE (bn_transaction_all);
 
   _RURL ("/info") REQ ("GET") ROUTE (bn_info);
 

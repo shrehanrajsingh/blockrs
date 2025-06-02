@@ -367,7 +367,7 @@ _parse_val (std::string &val)
 
             case ']':
               {
-                if (j == vl - 1)
+                if (j == vl - 1 && buf.size ())
                   {
                     if (!in_str && !gb)
                       {
@@ -672,7 +672,7 @@ JsonContext::to_string ()
       if (!first)
         ss << ", ";
       first = false;
-      dbg ("key: " << key << "\tvalue << " << int (value->get_type ()));
+      // dbg ("key: " << key << "\tvalue << " << int (value->get_type ()));
       ss << "\"" << key << "\": " << *value;
     }
   ss << "}";

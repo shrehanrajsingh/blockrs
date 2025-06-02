@@ -87,6 +87,18 @@ public:
     fetch_blocks_from_chain ();
   }
 
+  inline std::vector<Block *> &
+  get_blocks ()
+  {
+    return blocks;
+  }
+
+  inline const std::vector<Block *> &
+  get_blocks () const
+  {
+    return blocks;
+  }
+
   void fetch_blocks_from_chain ();
   virtual std::string to_string ();
   void mine ();

@@ -29,6 +29,9 @@ private:
   _RURL ("/connect") REQ ("POST") ROUTE (connect_to_chain);
   _RURL ("/mine") REQ ("GET") ROUTE (mine);
 
+  /* fetch latest nodes from blockchain */
+  _RURL ("/update") REQ ("GET") ROUTE (update);
+
 public:
   NodeServer ();
   NodeServer (Node *);
