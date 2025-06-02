@@ -20,11 +20,14 @@ private:
   std::vector<RouteInfo> routes;
   Node *node;
 
+  bool is_mining = false;
+
   /* node routes */
   /* we will call '/' top */
-  ROUTE (top) _RURL ("/") REQ ("GET", "POST");
-  ROUTE (info) _RURL ("/info") REQ ("GET");
-  ROUTE (connect_to_chain) _RURL ("/connect") REQ ("POST");
+  _RURL ("/") REQ ("GET", "POST") ROUTE (top);
+  _RURL ("/info") REQ ("GET") ROUTE (info);
+  _RURL ("/connect") REQ ("POST") ROUTE (connect_to_chain);
+  _RURL ("/mine") REQ ("GET") ROUTE (mine);
 
 public:
   NodeServer ();

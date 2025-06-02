@@ -736,7 +736,8 @@ JsonObject::to_string () const
   if (is_string ())
     return as_string ();
   else
-    throw std::invalid_argument ("Invalid conversion to string");
+    throw std::invalid_argument ("Invalid conversion to string of type: "
+                                 + std::to_string (int (get_type ())));
 
   return "";
 }

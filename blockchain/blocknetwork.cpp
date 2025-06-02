@@ -1,4 +1,5 @@
 #include "blocknetwork.hpp"
+#include "transaction.hpp"
 
 namespace rs::block
 {
@@ -35,7 +36,8 @@ BlockNetwork::create_genesis_block (Transaction &t)
   owner = t.from;
   add_transaction (t);
 
-  add_block ((Block){ .header = (BlockHeader){ .difficulty_target = 4,
+  add_block ((Block){ .header = (BlockHeader){ .difficulty_target
+                                               = BK_DEFAULT_DIFFICULTY_TARGET,
                                                .nonce = 10,
                                                .prev_hash = "",
                                                .timestamp = time (NULL),
@@ -95,7 +97,10 @@ BlockNetwork::add_block (Block &&rhs)
   chain.back ().transactions_list = get_pending_transactions ();
 
   for (Transaction &t : chain.back ().transactions_list)
-    t.status = TransactionStatusEnum::Success;
+    {
+      t.status = TransactionStatusEnum::Success;
+      t.block_num = chain.size () - 1;
+    }
 
   get_pending_transactions ().clear ();
 
@@ -125,9 +130,7 @@ BlockNetwork::add_transaction (Transaction &&t)
 {
   try
     {
-
       transactions_pending.push_back (std::move (t));
-
       Transaction &bk = transactions_pending.back ();
       bk.status = TransactionStatusEnum::Pending;
       bk.block_num = chain.size () - 1;
@@ -184,6 +187,7 @@ Block::to_string ()
 
   for (Transaction &i : transactions_list)
     {
+      dbg ("transactions_list_i: " << i.to_string ());
       json_t *jo = new json_t;
       *jo = json_t::from_string (i.to_string ());
       jar.push_back (new JsonObject (jo));
@@ -298,6 +302,47 @@ BlockNetwork::valid_chain ()
     }
 
   return true;
+}
+
+Block
+Block::from_string (std::string str)
+{
+  json_t jp = json_t::from_string (str);
+  Block b;
+
+  b.header.difficulty_target = size_t (jp["difficulty_target"]->as_integer ());
+  b.header.nonce = size_t (jp["nonce"]->as_integer ());
+  b.header.prev_hash = jp["prev_hash"]->as_string ();
+  b.header.timestamp = time_t (jp["timestamp"]->as_integer ());
+  b.header.version = jp["version"]->as_string ();
+
+  if (jp.has_key ("transactions"))
+    {
+      std::vector<JsonObject *> jar = jp["transactions"]->as_array ();
+
+      /**
+       * A known bug in json representation
+       * is that sometimes empty arrays are
+       * represented as [0] (an actual 0 with array length of 1)
+       * We need to detect that.
+       */
+      if (jar.size ())
+        {
+          if (jar[0]->get_type () != JsonType::Object)
+            goto end;
+        }
+
+      for (JsonObject *jv : jp["transactions"]->as_array ())
+        {
+          std::stringstream ss;
+          ss << *jv;
+
+          b.transactions_list.push_back (Transaction::from_string (ss.str ()));
+        }
+    }
+
+end:
+  return b;
 }
 
 } // namespace rs::block

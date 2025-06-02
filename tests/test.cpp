@@ -234,12 +234,14 @@ test7 ()
   //   }
 
   BlockNetwork bn;
-  bn.add_block ((Block){ .header = (BlockHeader){ .difficulty_target = 4,
-                                                  .nonce = 10,
-                                                  .prev_hash = "",
-                                                  .timestamp = time (NULL),
-                                                  .version = "0.0.1" },
-                         .transactions_list = { t, u } });
+  bn.add_block (
+      (Block){ .header = (BlockHeader){ .difficulty_target
+                                        = BK_DEFAULT_DIFFICULTY_TARGET,
+                                        .nonce = 10,
+                                        .prev_hash = "",
+                                        .timestamp = time (NULL),
+                                        .version = "0.0.1" },
+               .transactions_list = { t, u } });
 
   bn.to_string ();
 }

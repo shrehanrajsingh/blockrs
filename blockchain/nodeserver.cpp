@@ -310,6 +310,46 @@ NodeServer::route_connect_to_chain (HttpRequest req)
   return resp;
 }
 
+HttpResponse
+NodeServer::route_mine (HttpRequest req)
+{
+  dbg ("inside '/mine'");
+  HttpResponse resp;
+
+  if (is_mining)
+    {
+      resp.status_code = HttpStatusEnum::AlreadyReported;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body = JSON_RAW ({ "message" : "Node is already mining" });
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      return resp;
+    }
+
+  is_mining = true;
+  std::thread t ([this] () {
+    node->mine ();
+    is_mining = false;
+  });
+
+  t.detach ();
+
+  resp.status_code = HttpStatusEnum::OK;
+  resp.status_message = get_status_message (resp.status_code);
+
+  resp.body = JSON_RAW ({ "message" : "Deployed miner thread." });
+  resp.head_map[HttpHeaderEnum::ContentLength]
+      = parse_header ("Content-Length: " + std::to_string (resp.body.size ()));
+  resp.head_map[HttpHeaderEnum::ContentType]
+      = parse_header ("Content-Type: application/json");
+
+  return resp;
+}
+
 void
 NodeServer::add_routes ()
 {
@@ -322,6 +362,9 @@ NodeServer::add_routes ()
   add_route ("/connect", { "POST" }, [this] (HttpRequest req) {
     return this->route_connect_to_chain (req);
   });
+
+  add_route ("/mine", { "GET" },
+             [this] (HttpRequest req) { return this->route_mine (req); });
 }
 
 void
@@ -341,4 +384,5 @@ NodeServer::set_node (Node *n)
                         + std::to_string (get_port ()));
     }
 }
+
 } // namespace rs::block

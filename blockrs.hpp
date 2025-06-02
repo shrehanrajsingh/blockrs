@@ -7,6 +7,7 @@
 
 #include "blockchain/blocknetwork.hpp"
 #include "blockchain/bnserver.hpp"
+#include "blockchain/consensus/classes.hpp"
 #include "blockchain/node.hpp"
 #include "blockchain/nodeserver.hpp"
 #include "blockchain/transaction.hpp"

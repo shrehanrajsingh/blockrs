@@ -8,6 +8,8 @@
 #include "transaction.hpp"
 #include "wallet.hpp"
 
+#define BK_DEFAULT_DIFFICULTY_TARGET (2)
+
 namespace rs::block
 {
 struct Block;
@@ -29,6 +31,7 @@ struct Block
 
   std::string hash ();
   std::string to_string ();
+  static Block from_string (std::string _JsonStr);
 };
 
 class BlockNetwork

@@ -856,4 +856,57 @@ BlocknetServer::add_routes ()
   add_route ("/info", { "GET" },
              [this] (HttpRequest req) { return this->route_bn_info (req); });
 }
+
+void
+BlocknetServer::run ()
+{
+  std::thread nft ([this] {
+    while (1)
+      {
+        fetch_nodes ();
+        sleep (2); /* 2s */
+      }
+  }); /* node fetch thread */
+
+  nft.detach ();
+  this->HttpServer::run ();
+}
+
+void
+BlocknetServer::fetch_nodes ()
+{
+  if (blockchain == nullptr)
+    return;
+
+  dbg ("here_in_fetch_nodes1");
+  for (Node *&i : nodes)
+    {
+      if (!i->get_bnt_url ().size ())
+        continue;
+
+      std::string info_r;
+      dbg ("here_in_fetch_nodes2");
+
+      try
+        {
+          info_r = fetch (i->get_ns_url (), "GET", "/info");
+        }
+      catch (const std::exception &e)
+        {
+          std::cerr << e.what () << '\n';
+        }
+
+      dbg ("here_in_fetch_nodes3");
+      dbg ("info_r: " << info_r);
+
+      size_t bidx = info_r.find ("\r\n\r\n");
+
+      if (info_r.find ("200 OK") > bidx)
+        continue;
+
+      info_r = info_r.substr (bidx + 1);
+
+      *i = Node::from_string (info_r);
+    }
+}
 } // namespace rs::block

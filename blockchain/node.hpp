@@ -3,6 +3,7 @@
 
 #include "../header.hpp"
 #include "../json/json.hpp"
+#include "consensus/consensus.hpp"
 #include "transaction.hpp"
 #include "wallet.hpp"
 
@@ -16,11 +17,15 @@ enum class NodeTypeEnum
   Authority = 3,
 };
 
+struct Block;
 class Node
 {
   NodeTypeEnum type;
   std::string ns_url;  /* url of nodeserver */
   std::string bnt_url; /* url of blockchainnetwork server */
+  std::vector<Block *> blocks;
+
+  ProofOfWork mech; /* consensus mechanism */
 
 public:
   Node () : type (NodeTypeEnum::Full), ns_url (""), bnt_url ("") {}
@@ -79,9 +84,17 @@ public:
   set_bnt_url (std::string _Url)
   {
     bnt_url = _Url;
+    fetch_blocks_from_chain ();
   }
 
+  void fetch_blocks_from_chain ();
   virtual std::string to_string ();
+  void mine ();
+
+  static Node from_string (std::string _JsonStr);
+
+  void add_block (Block &);
+  void add_block (Block &&);
 
   ~Node () {}
 };

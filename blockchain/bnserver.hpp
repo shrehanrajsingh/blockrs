@@ -63,6 +63,10 @@ public:
   void add_node (Node *);
   void remove_node (size_t);
 
+  void run () override;
+
+  void fetch_nodes ();
+
   inline std::vector<Node *> &
   get_nodes ()
   {

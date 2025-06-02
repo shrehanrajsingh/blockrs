@@ -10,7 +10,7 @@ Transaction::hash ()
   json_t j;
   J (j["status"]) = int (status);
   J (j["block_num"]) = int (block_num);
-  J (j["timestamp"]) = int (time (NULL));
+  J (j["timestamp"]) = int (timestamp);
   J (j["from"]) = from;
   J (j["to"]) = to;
   J (j["value"]) = value;
@@ -37,7 +37,7 @@ Transaction::to_string ()
   json_t j;
   J (j["status"]) = int (status);
   J (j["block_num"]) = int (block_num);
-  J (j["timestamp"]) = int (time (NULL));
+  J (j["timestamp"]) = int (timestamp);
   J (j["from"]) = from;
   J (j["to"]) = to;
   J (j["value"]) = int (value);
@@ -53,8 +53,8 @@ Transaction::to_string ()
   return j.to_string ();
 }
 
-static Transaction
-from_string (std::string s)
+Transaction
+Transaction::from_string (std::string s)
 {
   using namespace json;
   json_t j = json_t::from_string (s);

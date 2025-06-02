@@ -109,7 +109,8 @@ public:
   as_integer () const
   {
     if (type != JsonType::Integer)
-      throw std::runtime_error ("JSON value is not an integer");
+      throw std::runtime_error ("JSON value is not an integer. type: "
+                                + std::to_string (int (get_type ())));
     return jint;
   }
 
@@ -117,7 +118,8 @@ public:
   as_float () const
   {
     if (type != JsonType::Float)
-      throw std::runtime_error ("JSON value is not a float");
+      throw std::runtime_error ("JSON value is not a float. type: "
+                                + std::to_string (int (get_type ())));
     return jfloat;
   }
 
@@ -125,7 +127,8 @@ public:
   as_string () const
   {
     if (type != JsonType::String)
-      throw std::runtime_error ("JSON value is not a string");
+      throw std::runtime_error ("JSON value is not a string. type: "
+                                + std::to_string (int (get_type ())));
     return jstr;
   }
 
@@ -133,7 +136,8 @@ public:
   as_object () const
   {
     if (type != JsonType::Object)
-      throw std::runtime_error ("JSON value is not an object");
+      throw std::runtime_error ("JSON value is not an object. type: "
+                                + std::to_string (int (get_type ())));
     return jobj;
   }
 
@@ -141,7 +145,8 @@ public:
   as_boolean () const
   {
     if (type != JsonType::Boolean)
-      throw std::runtime_error ("JSON value is not a boolean");
+      throw std::runtime_error ("JSON value is not a boolean. type: "
+                                + std::to_string (int (get_type ())));
     return jbool;
   }
 
@@ -149,7 +154,8 @@ public:
   as_array () const
   {
     if (type != JsonType::Array)
-      throw std::runtime_error ("JSON value is not an array");
+      throw std::runtime_error ("JSON value is not an array. type: "
+                                + std::to_string (int (get_type ())));
     return jarray;
   }
 
