@@ -37,6 +37,11 @@ else()
     )
 endif()
 
+set(BDWGC_ENABLE_THREADS ON CACHE BOOL "Enable threads in Boehm GC")
+set(BDWGC_THREADS "posix" CACHE STRING "Thread model for Boehm GC")
+
+add_subdirectory(lib/bdwgc)
+
 add_library(blockrs
     header.hpp
 
@@ -72,7 +77,8 @@ target_include_directories(
     ${SECP256K1_INCLUDE_DIR}
     # lib/secp256k1/include
     # /usr/local/include
+    lib/bdwgc/include
     lib/tiny_sha3
 )
 
-target_link_libraries(blockrs ${SECP256K1_LIB} OpenSSL::Crypto)
+target_link_libraries(blockrs ${SECP256K1_LIB} OpenSSL::Crypto gc)

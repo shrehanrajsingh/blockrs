@@ -3,8 +3,19 @@
 
 namespace rs::block
 {
-NodeServer::NodeServer () : HttpServer (), node (nullptr) {}
-NodeServer::NodeServer (Node *n) : HttpServer (), node (n) {}
+NodeServer::NodeServer () : HttpServer (), node (nullptr)
+{
+  wallet = new Wallet;
+}
+NodeServer::NodeServer (Node *n) : HttpServer (), node (n)
+{
+  wallet = new Wallet;
+}
+
+NodeServer::NodeServer (Node *n, Wallet *w)
+    : HttpServer (), node (n), wallet (w)
+{
+}
 NodeServer::~NodeServer ()
 {
   if (fd != -1)
@@ -333,7 +344,14 @@ NodeServer::route_mine (HttpRequest req)
 
   is_mining = true;
   std::thread t ([this] () {
-    node->mine ();
+    int idx = node->mine ();
+
+    if (reject_mine && idx != -1) /* prevent race conditions */
+      {
+        node->get_blocks ().erase (node->get_blocks ().begin () + idx);
+        reject_mine = false;
+      }
+
     is_mining = false;
   });
 
@@ -440,6 +458,109 @@ NodeServer::route_update (HttpRequest req)
   return resp;
 }
 
+HttpResponse
+NodeServer::route_wallet (HttpRequest req)
+{
+  HttpResponse resp;
+
+  if (wallet == nullptr) /* this shouldn't be possible since the constructor
+                            automatically defines a wallet */
+    {
+      resp.status_code = HttpStatusEnum::InternalServerError;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body
+          = JSON_RAW ({ "message" : "NodeServer has no associated wallet." });
+
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      return resp;
+    }
+
+  json_t jw = json_t::from_string (wallet->to_string ());
+  J (jw["private_key"]) = "<HIDDEN>";
+
+  resp.body = jw.to_string ();
+
+  resp.status_code = HttpStatusEnum::OK;
+  resp.status_message = get_status_message (resp.status_code);
+
+  resp.head_map[HttpHeaderEnum::ContentLength]
+      = parse_header ("Content-Length: " + std::to_string (resp.body.size ()));
+  resp.head_map[HttpHeaderEnum::ContentType]
+      = parse_header ("Content-Type: application/json");
+
+  return resp;
+}
+
+HttpResponse
+NodeServer::route_wallet_sign (HttpRequest req)
+{
+  HttpResponse resp;
+
+  if (wallet == nullptr) /* this shouldn't be possible since the constructor
+                            automatically defines a wallet */
+    {
+      resp.status_code = HttpStatusEnum::InternalServerError;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body
+          = JSON_RAW ({ "message" : "NodeServer has no associated wallet." });
+
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      return resp;
+    }
+
+  json_t jw = json_t::from_string (req.body);
+  dbg ("jw_str: " << jw.to_string ());
+
+  if (!jw.has_key ("nonce") || !jw.has_key ("to") || !jw.has_key ("value")
+      || !jw.has_key ("gas_fee") || !jw.has_key ("data"))
+    {
+      resp.status_code = HttpStatusEnum::BadRequest;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body = JSON_RAW ({
+        "error" :
+            "Missing parameters 'nonce', 'to', 'value', 'gas_fee', 'data'"
+      });
+
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      return resp;
+    }
+
+  dbg ("wallet_sign jw: " << jw.to_string ());
+
+  std::string signmsg = jw.to_string ();
+  std::string sign = wallet->sign (signmsg);
+
+  json_t r;
+  J (r["sign"]) = sign;
+
+  resp.status_code = HttpStatusEnum::OK;
+  resp.status_message = get_status_message (resp.status_code);
+
+  resp.body = r.to_string ();
+
+  resp.head_map[HttpHeaderEnum::ContentLength]
+      = parse_header ("Content-Length: " + std::to_string (resp.body.size ()));
+  resp.head_map[HttpHeaderEnum::ContentType]
+      = parse_header ("Content-Type: application/json");
+
+  return resp;
+}
+
 void
 NodeServer::add_routes ()
 {
@@ -458,11 +579,19 @@ NodeServer::add_routes ()
 
   add_route ("/update", { "GET" },
              [this] (HttpRequest req) { return this->route_update (req); });
+
+  add_route ("/wallet", { "GET" },
+             [this] (HttpRequest req) { return this->route_wallet (req); });
+
+  add_route ("/wallet/sign", { "POST" }, [this] (HttpRequest req) {
+    return this->route_wallet_sign (req);
+  });
 }
 
 void
 NodeServer::set_node (Node *n)
 {
+  /* replace node */
   if (node != nullptr)
     {
       std::string url = node->get_ns_url ();
@@ -472,10 +601,17 @@ NodeServer::set_node (Node *n)
     }
   else
     {
+      /* new node */
       node = n;
       node->set_ns_url (std::string (BKRS_SERVER_URL) + ":"
                         + std::to_string (get_port ()));
     }
+}
+
+void
+NodeServer::set_wallet (Wallet *w)
+{
+  wallet = w;
 }
 
 } // namespace rs::block

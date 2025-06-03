@@ -13,6 +13,7 @@
 namespace rs::block
 {
 struct Block;
+class BlocknetServer;
 struct BlockHeader
 {
   std::string version;
@@ -139,6 +140,8 @@ public:
   Block &get_block (size_t);      /* from block_num */
 
   std::string to_string ();
+
+  friend class BlocknetServer;
 
   ~BlockNetwork () {}
 };

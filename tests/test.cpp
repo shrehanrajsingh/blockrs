@@ -365,7 +365,7 @@ test10 ()
                     .symbol = "RS",
                     .timestamp = time (NULL),
                     .tr_fee = (2100 * 50) / 1000.0f,
-                    .value = 50 };
+                    .value = 21000000.0f };
 
   t.hash ();
   w.sign_transaction (t);
@@ -514,9 +514,43 @@ test12 ()
   ws.run ();
 }
 
+/* void *
+operator new (std::size_t data)
+{
+  void *ptr = GC_MALLOC (data);
+  if (!ptr)
+    throw std::bad_alloc ();
+
+  return ptr;
+}
+
+void *
+operator new[] (std::size_t data)
+{
+  void *ptr = GC_MALLOC (data);
+  if (!ptr)
+    throw std::bad_alloc ();
+
+  return ptr;
+}
+
+void
+operator delete (void *ptr) noexcept
+{
+  // do nothing
+}
+
+void
+operator delete[] (void *ptr) noexcept
+{
+  // do nothing
+} */
+
 int
 main (int argc, char const *argv[])
 {
+  /* GC_INIT (); */
+
   gArgc = argc;
   gArgv = (char **)argv;
 

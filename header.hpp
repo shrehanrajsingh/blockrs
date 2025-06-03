@@ -32,6 +32,8 @@
 #include "utils/str.hpp"
 #include "utils/vec.hpp"
 
+/* #include <gc.h> */
+
 #if !defined(dbg)
 #define dbg(X)                                                                \
   std::cout << __FILE__ << '(' << __LINE__ << ')' << X << std::endl;

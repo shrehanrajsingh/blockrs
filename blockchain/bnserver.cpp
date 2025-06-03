@@ -927,7 +927,12 @@ BlocknetServer::run ()
     while (1)
       {
         fetch_nodes ();
-        sleep (2); /* 2s */
+
+#ifdef _WIN32
+        // TODO
+#else
+        sleep (BK_FETCHNODE_DELAY_S);
+#endif
       }
   }); /* node fetch thread */
 
@@ -950,13 +955,24 @@ BlocknetServer::fetch_nodes ()
 
       std::string info_r;
 
-      try
+      int retries = 3;
+
+      while (retries--)
         {
-          info_r = fetch (i->get_ns_url (), "GET", "/info");
-        }
-      catch (const std::exception &e)
-        {
-          std::cerr << e.what () << '\n';
+          try
+            {
+              info_r = fetch (i->get_ns_url (), "GET", "/info");
+              break;
+            }
+          catch (const std::exception &e)
+            {
+              std::cerr << e.what () << '\n';
+              if (!retries)
+                {
+                  dbg ("fetch <node>/info failed");
+                  return;
+                }
+            }
         }
 
       dbg ("info_r: " << info_r);
@@ -968,34 +984,143 @@ BlocknetServer::fetch_nodes ()
 
       info_r = info_r.substr (bidx + 1);
 
+      for (size_t j = 0; j < i->get_blocks ().size (); j++)
+        delete i->get_blocks ()[j];
+
       *i = Node::from_string (info_r);
     }
 
+  bool saw_potential = false;
   for (Node *&i : nodes)
     {
-      if (mlc_node == nullptr
-          || (i->get_blocks ().size () > mlc_node->get_blocks ().size ()))
-        mlc_node = i;
+      if (mlc_node == nullptr)
+        {
+          mlc_node = i;
+          continue;
+        }
+
+      dbg ("blockchain->get_chain().size(): "
+           << blockchain->get_chain ().size ()
+           << "\tmlc_node->get_blocks().size(): "
+           << mlc_node->get_blocks ().size ());
+
+      if (i->get_blocks ().size () > mlc_node->get_blocks ().size ())
+        {
+          mlc_node = i;
+          saw_potential = true;
+        }
     }
+
+  if (blockchain && mlc_node
+      && mlc_node->get_blocks ().size () > blockchain->get_chain ().size ())
+    saw_potential = true;
 
   /* replace main chain with longest chain in node */
   /* also send an update request to other nodes */
-  if (mlc_node != nullptr) /* TBH this statement will always be true, except
-                              when there are no nodes */
+  if (saw_potential)
     {
+      dbg ("saw_potential: 1");
       std::vector<Block> nchain;
       for (Block *&b : mlc_node->get_blocks ())
-        nchain.push_back (*b);
+        {
+          for (Transaction &i : b->transactions_list)
+            i.status = TransactionStatusEnum::Success;
+
+          nchain.push_back (*b);
+        }
 
       blockchain->get_chain () = nchain;
 
       for (Node *&i : nodes)
         {
           if (i == mlc_node)
-            continue;
+            {
+              if (!nchain.size ())
+                continue;
 
+              /* add coinbase transaction */
+              std::string winfo;
+
+              try
+                {
+                  winfo = fetch (i->get_ns_url (), "GET", "/wallet");
+                }
+              catch (const std::exception &e)
+                {
+                  std::cerr << e.what () << '\n';
+                  continue;
+                }
+
+              size_t bidx = winfo.find ("\r\n\r\n");
+
+              if (winfo.find ("200 OK") > bidx)
+                {
+                  continue;
+                }
+
+              winfo = winfo.substr (bidx + 1);
+              json_t jwi = json_t::from_string (winfo);
+
+              if (!jwi.has_key ("address"))
+                continue;
+
+              std::string addr = jwi["address"]->as_string ();
+
+              Transaction nt = (Transaction){
+                .from = blockchain->owner,
+                .to = addr,
+                .gas_price = GAS_PRICE_DEFAULT,
+                .gas_used = 2100,
+                .input_data = "Transfer of currency value 21 &RS only as a "
+                              "token for adding a block",
+                .value = 21,
+                .nonce = 19,
+                .timestamp = time (NULL),
+                .tr_fee = 105,
+                .is_coinbase_transaction = true,
+                .block_num = nchain.size () - 1,
+              };
+
+              std::string sign_tr;
+
+              try
+                {
+                  std::string ds = nt.to_string_sign ();
+                  sign_tr
+                      = fetch (i->get_ns_url (), "POST", "/wallet/sign", ds);
+                }
+              catch (const std::exception &e)
+                {
+                  std::cerr << e.what () << '\n';
+                  continue;
+                }
+
+              bidx = sign_tr.find ("\r\n\r\n");
+
+              if (sign_tr.find ("200 OK") > bidx)
+                continue;
+
+              sign_tr = sign_tr.substr (bidx + 1);
+              json_t jstr = json_t::from_string (sign_tr);
+
+              if (!jstr.has_key ("sign"))
+                continue;
+
+              std::string sgmsg = jstr["sign"]->to_string ();
+              nt.signature = sgmsg;
+              nt.hash ();
+
+              dbg ("pushing cbt");
+              blockchain->get_chain ().back ().transactions_list.push_back (
+                  nt);
+            }
+        }
+
+      for (Node *&i : nodes)
+        {
           try
             {
+              /* transmit to all blocks an update signal */
               fetch (i->get_ns_url (), "GET", "/update",
                      blockchain->to_string ());
             }

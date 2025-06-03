@@ -101,14 +101,14 @@ public:
 
   void fetch_blocks_from_chain ();
   virtual std::string to_string ();
-  void mine ();
+  int mine ();
 
   static Node from_string (std::string _JsonStr);
 
   void add_block (Block &);
   void add_block (Block &&);
 
-  ~Node () {}
+  ~Node () {};
 };
 
 class FullNode : public Node

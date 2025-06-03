@@ -1,3 +1,6 @@
 [submodule "lib/secp256k1"]
 	path = lib/secp256k1
 	url = https://github.com/bitcoin-core/secp256k1
+[submodule "lib/bdwgc"]
+	path = lib/bdwgc
+	url = https://github.com/ivmai/bdwgc.git

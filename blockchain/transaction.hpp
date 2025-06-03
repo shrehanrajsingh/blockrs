@@ -40,23 +40,31 @@ enum class TransactionStatusEnum
  * - input_data: Additional data for the transaction (e.g., smart contract
  * - signature: Signature of the wallet that signed the transaction
  * calls)
+ * - is_coinbase_transaction: A transaction which transfers assets to
+ *    a node for adding a block
+ *
+ * In my model of Blockchain, I have implemented an "owner" entity which
+ * stores all the funds in the blockchain (capped currency) and whenever
+ * a node adds a block, certain amount of funds are transferred from the
+ * "owner" to the node's wallet
  */
 struct Transaction
 {
-  std::string tr_hash;
-  TransactionStatusEnum status;
-  size_t block_num;
-  std::time_t timestamp;
-  std::string from;
-  std::string to;
-  float value;
-  std::string symbol;
-  float gas_used;
+  std::string tr_hash = "";
+  TransactionStatusEnum status = TransactionStatusEnum::Pending;
+  size_t block_num = 0;
+  std::time_t timestamp = 0;
+  std::string from = "";
+  std::string to = "";
+  float value = 0.0f;
+  std::string symbol = "";
+  float gas_used = 0.0f;
   float gas_price = GAS_PRICE_DEFAULT;
-  float tr_fee;
-  size_t nonce;
-  std::string input_data;
-  std::string signature;
+  float tr_fee = 0.0f;
+  size_t nonce = 0;
+  std::string input_data = "";
+  std::string signature = "";
+  bool is_coinbase_transaction = false;
 
   //   Transaction () = default;
   //   Transaction (Transaction &) = default;

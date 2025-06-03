@@ -18,7 +18,7 @@ Server::setup_socket ()
   addrlen = sizeof (address);
   fd = socket (AF_INET, SOCK_STREAM, 0);
 
-  if (!fd)
+  if (fd < 0)
     {
       std::cerr << "socket failed" << std::endl;
       exit (EXIT_FAILURE);
@@ -175,7 +175,7 @@ HttpServer::setup_socket ()
   addrlen = sizeof (address);
   fd = socket (AF_INET, SOCK_STREAM, 0);
 
-  if (!fd)
+  if (fd == -1)
     {
       std::cerr << "socket failed" << std::endl;
       exit (EXIT_FAILURE);
@@ -280,14 +280,14 @@ HttpServer::handle_client (int client_fd)
                                          cl - total_read);
                   if (bytes_read <= 0)
                     {
+                      ::close (client_fd);
                       goto rem_client;
                       break;
                     }
                   total_read += bytes_read;
                 }
 
-              hr.body
-                  = std::string (std::string (rem_buf, total_read).c_str ());
+              hr.body = std::string (rem_buf, total_read);
               delete[] rem_buf;
             }
           else
@@ -366,7 +366,9 @@ HttpServer::handle_client (int client_fd)
           = std::find (client_fds.begin (), client_fds.end (), client_fd);
 
       if (pos != client_fds.end ())
-        client_fds.erase (pos);
+        {
+          client_fds.erase (pos);
+        }
     }
 }
 

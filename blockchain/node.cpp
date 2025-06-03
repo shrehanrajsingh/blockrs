@@ -125,13 +125,13 @@ Node::fetch_blocks_from_chain ()
     }
 }
 
-void
+int
 Node::mine ()
 {
   if (!get_bnt_url ().size ())
-    return; /* blockchain has not been connected yet */
+    return -1; /* blockchain has not been connected yet */
   if (!blocks.size ())
-    return; /* no genesis block, likely a faulty blockchain */
+    return -1; /* no genesis block, likely a faulty blockchain */
 
   Block *&last_block = blocks.back ();
   dbg ("Inside node::mine()");
@@ -143,9 +143,36 @@ Node::mine ()
   json_t resp = mech.compute (params);
   int nonce = resp["nonce"]->as_integer ();
 
-  /**
-   * TODO: fetch pending transactions from blockchain and add to block
-   */
+  std::string tr_r = fetch (get_bnt_url (), "GET", "/transaction/all");
+  size_t bidx = tr_r.find ("\r\n\r\n");
+
+  std::vector<Transaction> tr_pending; /* we only need pending transactions */
+
+  if (tr_r.find ("200 OK") > bidx)
+    {
+      /* error in response */
+      /* skip */
+    }
+  else
+    {
+      tr_r = tr_r.substr (bidx + 1);
+      json_t jtr = json_t::from_string (tr_r);
+
+      if (jtr.has_key ("transaction_pending"))
+        {
+          std::vector<JsonObject *> arr
+              = jtr["transaction_pending"]->as_array ();
+
+          for (JsonObject *&i : arr)
+            {
+              std::stringstream ss;
+              ss << *i;
+
+              dbg ("tr_pending i: " << ss.str ());
+              tr_pending.push_back (Transaction::from_string (ss.str ()));
+            }
+        }
+    }
 
   Block nb;
   nb.header = (BlockHeader){ .difficulty_target
@@ -155,9 +182,12 @@ Node::mine ()
                              .timestamp = time (NULL),
                              .version = last_block->header.version };
 
-  /* nb.transactions_list = ... */
+  nb.transactions_list = tr_pending;
+  int r = blocks.size (); /* index of newly added block */
   add_block (nb);
   dbg ("Inside node::mine(): added block");
+
+  return r;
 }
 
 void

@@ -19,8 +19,12 @@ private:
   int addrlen = 0;
   std::vector<RouteInfo> routes;
   Node *node;
+  Wallet *wallet;
 
   bool is_mining = false;
+  bool reject_mine
+      = false; /* some other block mined before and transmitted
+                  the new blocks so current mining execution should stop */
 
   /* node routes */
   /* we will call '/' top */
@@ -32,14 +36,21 @@ private:
   /* fetch latest nodes from blockchain */
   _RURL ("/update") REQ ("GET") ROUTE (update);
 
+  /* wallet info */
+  _RURL ("/wallet") REQ ("GET") ROUTE (wallet);
+
+  _RURL ("/wallet/sign") REQ ("POST") ROUTE (wallet_sign);
+
 public:
   NodeServer ();
   NodeServer (Node *);
+  NodeServer (Node *, Wallet *);
   ~NodeServer ();
 
   void add_routes () override;
 
   void set_node (Node *);
+  void set_wallet (Wallet *);
 
   inline Node *&
   get_node ()

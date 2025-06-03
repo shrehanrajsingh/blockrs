@@ -21,6 +21,7 @@ Transaction::hash ()
   J (j["nonce"]) = int (nonce);
   J (j["input_data"]) = input_data;
   J (j["signature"]) = signature;
+  J (j["is_cbt"]) = is_coinbase_transaction;
 
   std::string strj = j.to_string ();
   const char *smsg = strj.c_str ();
@@ -49,6 +50,7 @@ Transaction::to_string ()
   J (j["input_data"]) = input_data;
   J (j["signature"]) = signature;
   J (j["tr_hash"]) = tr_hash;
+  J (j["is_cbt"]) = is_coinbase_transaction;
 
   return j.to_string ();
 }
@@ -74,6 +76,7 @@ Transaction::from_string (std::string s)
   t.input_data = j["input_data"]->as_string ();
   t.signature = j["signature"]->as_string ();
   t.tr_hash = j["tr_hash"]->as_string ();
+  t.is_coinbase_transaction = j["is_cbt"]->as_boolean ();
 
   return t;
 }

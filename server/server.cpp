@@ -2,14 +2,70 @@
 
 namespace rs::block
 {
+class ScopedSocket
+{
+  int sockfd;
+
+public:
+  ScopedSocket () : sockfd (-1) {}
+  explicit ScopedSocket (int fd) : sockfd (fd) {}
+
+  ScopedSocket (const ScopedSocket &) = delete;
+  ScopedSocket &operator= (const ScopedSocket &) = delete;
+
+  ScopedSocket (ScopedSocket &&other) noexcept : sockfd (other.sockfd)
+  {
+    other.sockfd = -1;
+  }
+
+  ScopedSocket &
+  operator= (ScopedSocket &&other) noexcept
+  {
+    if (this != &other)
+      {
+        close ();
+        sockfd = other.sockfd;
+        other.sockfd = -1;
+      }
+    return *this;
+  }
+
+  int
+  get () const
+  {
+    return sockfd;
+  }
+
+  void
+  reset (int newfd = -1)
+  {
+    if (sockfd != -1)
+      ::close (sockfd);
+    sockfd = newfd;
+  }
+
+  void
+  close ()
+  {
+    if (sockfd != -1)
+      {
+        ::close (sockfd);
+        sockfd = -1;
+      }
+  }
+
+  ~ScopedSocket ()
+  {
+    if (sockfd != -1)
+      ::close (sockfd);
+  }
+};
+
 std::string
 fetch_GET (const std::string &host, int port, const std::string &path,
            std::string body)
 {
-  int sockfd;
-
-  if ((sockfd = socket (AF_INET, SOCK_STREAM, 0)) < 0)
-    throw std::runtime_error ("socket creation failed");
+  ScopedSocket sockfd;
 
   struct addrinfo hints{}, *res, *p;
 
@@ -35,19 +91,22 @@ fetch_GET (const std::string &host, int port, const std::string &path,
 
   for (p = res; p != nullptr; p = p->ai_next)
     {
-      sockfd = socket (p->ai_family, p->ai_socktype, p->ai_protocol);
-      if (sockfd == -1)
+      ScopedSocket temp_sockfd (
+          socket (p->ai_family, p->ai_socktype, p->ai_protocol));
+      if (temp_sockfd.get () == -1)
         continue;
 
-      if (connect (sockfd, p->ai_addr, p->ai_addrlen) == 0)
-        break;
-
-      close (sockfd);
+      if (connect (temp_sockfd.get (), p->ai_addr, p->ai_addrlen) == 0)
+        {
+          sockfd = std::move (temp_sockfd);
+          break;
+        }
     }
 
-  if (p == nullptr)
+  freeaddrinfo (res);
+
+  if (sockfd.get () == -1)
     {
-      freeaddrinfo (res);
       throw std::runtime_error ("failed to connect");
     }
 
@@ -65,19 +124,16 @@ fetch_GET (const std::string &host, int port, const std::string &path,
       << body;
 
   std::string req = oss.str ();
-  send (sockfd, req.c_str (), req.size (), 0);
+  send (sockfd.get (), req.c_str (), req.size (), 0);
 
   char buf[4096];
   std::string resp;
   int bytes_read;
 
-  while ((bytes_read = read (sockfd, buf, sizeof (buf))) > 0)
+  while ((bytes_read = read (sockfd.get (), buf, sizeof (buf))) > 0)
     resp.append (buf, bytes_read);
   //   bytes_read = read (sockfd, buf, sizeof (buf));
   //   resp.append (buf, bytes_read);
-
-  close (sockfd);
-  freeaddrinfo (res);
 
   return resp;
 }
@@ -86,10 +142,7 @@ std::string
 fetch_POST (const std::string &host, int port, const std::string &path,
             std::string body)
 {
-  int sockfd;
-
-  if ((sockfd = socket (AF_INET, SOCK_STREAM, 0)) < 0)
-    throw std::runtime_error ("socket creation failed");
+  ScopedSocket sockfd;
 
   struct addrinfo hints{}, *res, *p;
 
@@ -115,19 +168,22 @@ fetch_POST (const std::string &host, int port, const std::string &path,
 
   for (p = res; p != nullptr; p = p->ai_next)
     {
-      sockfd = socket (p->ai_family, p->ai_socktype, p->ai_protocol);
-      if (sockfd == -1)
+      ScopedSocket temp_sockfd (
+          socket (p->ai_family, p->ai_socktype, p->ai_protocol));
+      if (temp_sockfd.get () == -1)
         continue;
 
-      if (connect (sockfd, p->ai_addr, p->ai_addrlen) == 0)
-        break;
-
-      close (sockfd);
+      if (connect (temp_sockfd.get (), p->ai_addr, p->ai_addrlen) == 0)
+        {
+          sockfd = std::move (temp_sockfd);
+          break;
+        }
     }
 
-  if (p == nullptr)
+  freeaddrinfo (res);
+
+  if (sockfd.get () == -1)
     {
-      freeaddrinfo (res);
       throw std::runtime_error ("failed to connect");
     }
 
@@ -145,19 +201,16 @@ fetch_POST (const std::string &host, int port, const std::string &path,
       << body;
 
   std::string req = oss.str ();
-  send (sockfd, req.c_str (), req.size (), 0);
+  send (sockfd.get (), req.c_str (), req.size (), 0);
 
   char buf[4096];
   std::string resp;
   int bytes_read;
 
-  while ((bytes_read = read (sockfd, buf, sizeof (buf))) > 0)
+  while ((bytes_read = read (sockfd.get (), buf, sizeof (buf))) > 0)
     resp.append (buf, bytes_read);
   //   bytes_read = read (sockfd, buf, sizeof (buf));
   //   resp.append (buf, bytes_read);
-
-  close (sockfd);
-  freeaddrinfo (res);
 
   return resp;
 }
