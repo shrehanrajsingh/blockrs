@@ -39,7 +39,11 @@ private:
   /* wallet info */
   _RURL ("/wallet") REQ ("GET") ROUTE (wallet);
 
+  /* sign a message */
   _RURL ("/wallet/sign") REQ ("POST") ROUTE (wallet_sign);
+
+  /* verify a message */
+  _RURL ("/wallet/verify") REQ ("POST") ROUTE (wallet_verify);
 
 public:
   NodeServer ();

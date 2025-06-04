@@ -19,8 +19,12 @@ find_library(SECP256K1_LIB secp256k1 REQUIRED)
 
 find_path(SECP256K1_INCLUDE_DIR
     NAMES secp256k1.h
-    PATHS /usr/local/include /usr/include
+    PATHS /usr/local/include
 )
+
+if(NOT SECP256K1_INCLUDE_DIR OR NOT SECP256K1_LIB)
+    message(FATAL_ERROR "libsecp256k1 not found")
+endif()
 
 add_subdirectory(tests)
 # add_subdirectory(lib/secp256k1)

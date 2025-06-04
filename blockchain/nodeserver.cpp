@@ -1,4 +1,5 @@
 #include "nodeserver.hpp"
+
 #include "blocknetwork.hpp"
 
 namespace rs::block
@@ -561,6 +562,80 @@ NodeServer::route_wallet_sign (HttpRequest req)
   return resp;
 }
 
+HttpResponse
+NodeServer::route_wallet_verify (HttpRequest req)
+{
+  HttpResponse resp;
+
+  json_t jreq = json_t::from_string (req.body);
+
+  if (!jreq.has_key ("message"))
+    {
+      resp.status_code = HttpStatusEnum::BadRequest;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body = JSON_RAW ({ "error" : "Missing parameter 'message'" });
+
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      return resp;
+    }
+
+  if (!jreq.has_key ("sign"))
+    {
+      resp.status_code = HttpStatusEnum::BadRequest;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body = JSON_RAW ({ "error" : "Missing parameter 'sign'" });
+
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      return resp;
+    }
+
+  std::string msg = jreq["message"]->as_string ();
+  std::string sign = jreq["sign"]->as_string ();
+  json_t jresp;
+
+  if (wallet == nullptr)
+    {
+      resp.status_code = HttpStatusEnum::BadGateway;
+      resp.status_message = get_status_message (resp.status_code);
+
+      resp.body = JSON_RAW ({ "error" : "Node has no associated wallet" });
+
+      resp.head_map[HttpHeaderEnum::ContentLength] = parse_header (
+          "Content-Length: " + std::to_string (resp.body.size ()));
+      resp.head_map[HttpHeaderEnum::ContentType]
+          = parse_header ("Content-Type: application/json");
+
+      return resp;
+    }
+
+  if (Wallet::verify (*wallet, sign, msg))
+    J (jresp["status"]) = true;
+  else
+    J (jresp["status"]) = false;
+
+  resp.status_code = HttpStatusEnum::OK;
+  resp.status_message = get_status_message (resp.status_code);
+
+  resp.body = jresp.to_string ();
+
+  resp.head_map[HttpHeaderEnum::ContentLength]
+      = parse_header ("Content-Length: " + std::to_string (resp.body.size ()));
+  resp.head_map[HttpHeaderEnum::ContentType]
+      = parse_header ("Content-Type: application/json");
+
+  return resp;
+}
+
 void
 NodeServer::add_routes ()
 {
@@ -585,6 +660,10 @@ NodeServer::add_routes ()
 
   add_route ("/wallet/sign", { "POST" }, [this] (HttpRequest req) {
     return this->route_wallet_sign (req);
+  });
+
+  add_route ("/wallet/verify", { "POST" }, [this] (HttpRequest req) {
+    return this->route_wallet_verify (req);
   });
 }
 

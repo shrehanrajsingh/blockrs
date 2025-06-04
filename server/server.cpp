@@ -2,6 +2,8 @@
 
 namespace rs::block
 {
+#if !defined(_WIN32)
+
 class ScopedSocket
 {
   int sockfd;
@@ -248,4 +250,7 @@ fetch (const std::string &url, const std::string &req, const std::string &path,
 
   return fetch (host, port, req, path, body);
 }
+
+#endif
+
 } // namespace rs::block
