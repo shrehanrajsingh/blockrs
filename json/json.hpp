@@ -29,28 +29,36 @@ class JsonObject
   JsonType type;
 
 public:
-  union
-  {
-    /* primitives */
-    int jint;
-    float jfloat;
-    std::string jstr;
-    JsonContext *jobj;
-    bool jbool;
-    std::vector<JsonObject *> jarray;
-    /* no value for null, just type is enough */
-  };
-  JsonObject () : type (JsonType::NoType) {}
-  JsonObject (JsonType _Type) : type (_Type) {}
+  using ArrayType = std::vector<JsonObject *>;
+  using ObjectType = JsonContext *;
 
-  JsonObject (const char *_Val) : type (JsonType::String), jstr (_Val) {}
-  JsonObject (std::string _Val) : type (JsonType::String), jstr (_Val) {}
-  JsonObject (int _Val) : type (JsonType::Integer), jint (_Val) {}
-  JsonObject (bool _Val) : type (JsonType::Boolean), jbool (_Val) {}
-  JsonObject (float _Val) : type (JsonType::Float), jfloat (_Val) {}
-  JsonObject (JsonContext *_Val) : type (JsonType::Object), jobj (_Val) {}
+  // union
+  // {
+  //   /* primitives */
+  //   int jint;
+  //   float jfloat;
+  //   std::string jstr;
+  //   JsonContext *jobj;
+  //   bool jbool;
+  //   std::vector<JsonObject *> jarray;
+  //   /* no value for null, just type is enough */
+  // };
+
+  std::variant<std::monostate, int, float, std::string, ObjectType, bool,
+               ArrayType>
+      value;
+
+  JsonObject () : type (JsonType::NoType), value (std::monostate{}) {}
+  JsonObject (std::nullptr_t) : type (JsonType::Null), value (std::monostate{})
+  {
+  }
+  JsonObject (std::string _Val) : type (JsonType::String), value (_Val) {}
+  JsonObject (int _Val) : type (JsonType::Integer), value (_Val) {}
+  JsonObject (bool _Val) : type (JsonType::Boolean), value (_Val) {}
+  JsonObject (float _Val) : type (JsonType::Float), value (_Val) {}
+  JsonObject (JsonContext *_Val) : type (JsonType::Object), value (_Val) {}
   JsonObject (std::vector<JsonObject *> _Val)
-      : type (JsonType::Array), jarray (_Val)
+      : type (JsonType::Array), value (_Val)
   {
   }
 
@@ -66,7 +74,11 @@ public:
     return type;
   }
 
-  JsonObject &operator= (const JsonObject &);
+  JsonObject (const JsonObject &) = default;
+  JsonObject (JsonObject &&) noexcept = default;
+  JsonObject &operator= (const JsonObject &) = default;
+  JsonObject &operator= (JsonObject &&) noexcept = default;
+
   friend std::ostream &operator<< (std::ostream &, JsonObject &);
 
   bool
@@ -111,7 +123,7 @@ public:
     if (type != JsonType::Integer)
       throw std::runtime_error ("JSON value is not an integer. type: "
                                 + std::to_string (int (get_type ())));
-    return jint;
+    return std::get<int> (value);
   }
 
   float
@@ -120,7 +132,7 @@ public:
     if (type != JsonType::Float)
       throw std::runtime_error ("JSON value is not a float. type: "
                                 + std::to_string (int (get_type ())));
-    return jfloat;
+    return std::get<float> (value);
   }
 
   const std::string &
@@ -129,7 +141,7 @@ public:
     if (type != JsonType::String)
       throw std::runtime_error ("JSON value is not a string. type: "
                                 + std::to_string (int (get_type ())));
-    return jstr;
+    return std::get<std::string> (value);
   }
 
   JsonContext *
@@ -138,7 +150,7 @@ public:
     if (type != JsonType::Object)
       throw std::runtime_error ("JSON value is not an object. type: "
                                 + std::to_string (int (get_type ())));
-    return jobj;
+    return std::get<JsonContext *> (value);
   }
 
   bool
@@ -147,7 +159,7 @@ public:
     if (type != JsonType::Boolean)
       throw std::runtime_error ("JSON value is not a boolean. type: "
                                 + std::to_string (int (get_type ())));
-    return jbool;
+    return std::get<bool> (value);
   }
 
   const std::vector<JsonObject *> &
@@ -156,7 +168,7 @@ public:
     if (type != JsonType::Array)
       throw std::runtime_error ("JSON value is not an array. type: "
                                 + std::to_string (int (get_type ())));
-    return jarray;
+    return std::get<ArrayType> (value);
   }
 
   int to_integer () const;
@@ -164,7 +176,7 @@ public:
   std::string to_string () const;
   bool to_boolean () const;
 
-  ~JsonObject () {}
+  ~JsonObject () = default;
 };
 
 class JsonContext

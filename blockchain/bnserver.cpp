@@ -658,19 +658,19 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
             J (jresp[ifstr]) = i.second;
           }
 
-        dbg ("jresp: " << jresp.to_string ());
+        // dbg ("jresp: " << jresp.to_string ());
 
         Transaction nt;
 
         try
           {
-            nt = { .from = jresp["sender"]->as_string (),
-                   .to = jresp["recipient"]->as_string (),
-                   .gas_price = GAS_PRICE_DEFAULT,
-                   .gas_used = 2100,
-                   .input_data = jresp["memo"]->as_string (),
-                   .tr_fee = std::stof (jresp["fee"]->as_string ()),
-                   .value = std::stof (jresp["amount"]->as_string ()) };
+            nt.from = jresp["sender"]->as_string ();
+            nt.to = jresp["recipient"]->as_string ();
+            nt.gas_price = GAS_PRICE_DEFAULT;
+            nt.gas_used = 2100;
+            nt.input_data = jresp["memo"]->as_string ();
+            nt.tr_fee = std::stof (jresp["fee"]->as_string ());
+            nt.value = std::stof (jresp["amount"]->as_string ());
           }
         catch (const std::exception &e)
           {
@@ -708,7 +708,7 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
             = fetch (jresp["wallet_server_link"]->as_string (), "POST",
                      "/sign", "{\"message\": \"" + escaped_nts + "\"}");
 
-        dbg ("ws_resp: " << ws_resp);
+        // dbg ("ws_resp: " << ws_resp);
 
         if (ws_resp.find ("200 OK") == std::string::npos)
           {
@@ -975,7 +975,7 @@ BlocknetServer::fetch_nodes ()
             }
         }
 
-      dbg ("info_r: " << info_r);
+      // dbg ("info_r: " << info_r);
 
       size_t bidx = info_r.find ("\r\n\r\n");
 
@@ -1015,11 +1015,12 @@ BlocknetServer::fetch_nodes ()
       && mlc_node->get_blocks ().size () > blockchain->get_chain ().size ())
     saw_potential = true;
 
+  dbg ("var_saw_potential: " << saw_potential);
   /* replace main chain with longest chain in node */
   /* also send an update request to other nodes */
   if (saw_potential)
     {
-      dbg ("saw_potential: 1");
+      dbg ("saw_potential: true");
       std::vector<Block> nchain;
       for (Block *&b : mlc_node->get_blocks ())
         {
@@ -1036,7 +1037,10 @@ BlocknetServer::fetch_nodes ()
           if (i == mlc_node)
             {
               if (!nchain.size ())
-                continue;
+                {
+                  dbg ("nchain.size() = 0");
+                  continue;
+                }
 
               /* add coinbase transaction */
               std::string winfo;
@@ -1047,6 +1051,7 @@ BlocknetServer::fetch_nodes ()
                 }
               catch (const std::exception &e)
                 {
+                  dbg ("fetch wallet error: ");
                   std::cerr << e.what () << '\n';
                   continue;
                 }
@@ -1055,6 +1060,7 @@ BlocknetServer::fetch_nodes ()
 
               if (winfo.find ("200 OK") > bidx)
                 {
+                  dbg ("wallet response error: ");
                   continue;
                 }
 
@@ -1062,35 +1068,39 @@ BlocknetServer::fetch_nodes ()
               json_t jwi = json_t::from_string (winfo);
 
               if (!jwi.has_key ("address"))
-                continue;
+                {
+                  dbg ("no address key: ");
+                  continue;
+                }
 
               std::string addr = jwi["address"]->as_string ();
 
-              Transaction nt = (Transaction){
-                .from = blockchain->owner,
-                .to = addr,
-                .gas_price = GAS_PRICE_DEFAULT,
-                .gas_used = 2100,
-                .input_data = "Transfer of currency value 21 &RS only as a "
-                              "token for adding a block",
-                .value = 21,
-                .nonce = 19,
-                .timestamp = time (NULL),
-                .tr_fee = 105,
-                .is_coinbase_transaction = true,
-                .block_num = nchain.size () - 1,
-              };
+              Transaction nt;
+              nt.from = blockchain->owner;
+              nt.to = addr;
+              nt.gas_price = GAS_PRICE_DEFAULT;
+              nt.gas_used = 2100;
+              nt.input_data = "Transfer of currency value 21 &RS only as a "
+                              "token for adding a block";
+              nt.value = 21;
+              nt.nonce = 19;
+              nt.timestamp = time (NULL);
+              nt.tr_fee = 105;
+              nt.is_coinbase_transaction = true;
+              nt.block_num = nchain.size () - 1;
 
               std::string sign_tr;
 
               try
                 {
                   std::string ds = nt.to_string_sign ();
+                  dbg ("ds: " << ds);
                   sign_tr
                       = fetch (i->get_ns_url (), "POST", "/wallet/sign", ds);
                 }
               catch (const std::exception &e)
                 {
+                  dbg ("/wallet/sign error");
                   std::cerr << e.what () << '\n';
                   continue;
                 }
@@ -1098,13 +1108,20 @@ BlocknetServer::fetch_nodes ()
               bidx = sign_tr.find ("\r\n\r\n");
 
               if (sign_tr.find ("200 OK") > bidx)
-                continue;
+                {
+                  dbg ("/wallet/sign response error");
+                  dbg ("sign_tr: " << sign_tr);
+                  continue;
+                }
 
               sign_tr = sign_tr.substr (bidx + 1);
               json_t jstr = json_t::from_string (sign_tr);
 
               if (!jstr.has_key ("sign"))
-                continue;
+                {
+                  dbg ("no 'sign' key");
+                  continue;
+                }
 
               std::string sgmsg = jstr["sign"]->to_string ();
               nt.signature = sgmsg;

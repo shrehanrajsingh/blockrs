@@ -36,12 +36,13 @@ BlockNetwork::create_genesis_block (Transaction &t)
   owner = t.from;
   add_transaction (t);
 
-  add_block ((Block){ .header = (BlockHeader){ .difficulty_target
-                                               = BK_DEFAULT_DIFFICULTY_TARGET,
-                                               .nonce = 10,
-                                               .prev_hash = "",
-                                               .timestamp = time (NULL),
-                                               .version = "0.0.1" } });
+  add_block ((Block){ .header = (BlockHeader){
+                          .version = "0.0.1",
+                          .prev_hash = "",
+                          .timestamp = time (NULL),
+                          .difficulty_target = BK_DEFAULT_DIFFICULTY_TARGET,
+                          .nonce = 10,
+                      } });
 
   if (!get_chain ().size ())
     throw std::runtime_error ("Error creating Genesis block");
@@ -51,18 +52,17 @@ void
 BlockNetwork::create_genesis_block_from_owner (Wallet &w)
 {
   std::string owner = "0x" + to_hex (w.get_address ().data (), 20);
-  Transaction t = (Transaction){
-    .from = owner,
-    .to = owner,
-    .gas_price = GAS_PRICE_DEFAULT,
-    .gas_used = 2100.0,
-    .input_data = "",
-    .nonce = 10,
-    .symbol = "RS",
-    .timestamp = time (NULL),
-    .tr_fee = 2100.0f * GAS_PRICE_DEFAULT / 1000.0f,
-    .value = 210000 /* send 210k tokens */
-  };
+  Transaction t;
+  t.from = owner;
+  t.to = owner;
+  t.gas_price = GAS_PRICE_DEFAULT;
+  t.gas_used = 2100.0;
+  t.input_data = "";
+  t.nonce = 10;
+  t.symbol = "RS";
+  t.timestamp = time (NULL);
+  t.tr_fee = 2100.0f * GAS_PRICE_DEFAULT / 1000.0f;
+  t.value = 210000; /* send 210k tokens */
 
   w.sign_transaction (t);
   create_genesis_block (t);
@@ -116,7 +116,7 @@ BlockNetwork::add_transaction (Transaction &t)
       transactions_pending.push_back (t);
       Transaction &bk = transactions_pending.back ();
       bk.status = TransactionStatusEnum::Pending;
-      bk.block_num = chain.size () - 1;
+      bk.block_num = chain.size ();
     }
   catch (const std::exception &e)
     {
@@ -171,7 +171,7 @@ BlockHeader::to_string ()
   J (j["nonce"]) = int (nonce);
 
   std::string r = j.to_string ();
-  dbg ("BlockHeader::to_string(): " << r);
+  // dbg ("BlockHeader::to_string(): " << r);
 
   return r;
 }
@@ -187,7 +187,7 @@ Block::to_string ()
 
   for (Transaction &i : transactions_list)
     {
-      dbg ("transactions_list_i: " << i.to_string ());
+      // dbg ("transactions_list_i: " << i.to_string ());
       json_t *jo = new json_t;
       *jo = json_t::from_string (i.to_string ());
       jar.push_back (new JsonObject (jo));
@@ -197,7 +197,7 @@ Block::to_string ()
 
   bls = j.to_string ();
 
-  dbg ("Block::to_string(): " << bls);
+  // dbg ("Block::to_string(): " << bls);
   return bls;
 }
 
@@ -230,14 +230,14 @@ BlockNetwork::to_string ()
       trns_rej.push_back (new JsonObject (jo));
     }
 
-  dbg ("trns_rej_size: " << trns_rej.size ());
+  // dbg ("trns_rej_size: " << trns_rej.size ());
   J (j["blocks"]) = blocks;
   J (j["owner"]) = owner;
   J (j["transactions_pending"]) = trns_pending;
   J (j["transactions_rejected"]) = trns_rej;
 
   std::string result = j.to_string ();
-  dbg ("BlockNetwork::to_string(): " << result);
+  // dbg ("BlockNetwork::to_string(): " << result);
   return result;
 }
 

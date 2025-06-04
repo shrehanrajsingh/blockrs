@@ -236,12 +236,12 @@ test7 ()
 
   BlockNetwork bn;
   bn.add_block (
-      (Block){ .header = (BlockHeader){ .difficulty_target
-                                        = BK_DEFAULT_DIFFICULTY_TARGET,
-                                        .nonce = 10,
+      (Block){ .header = (BlockHeader){ .version = "0.0.1",
                                         .prev_hash = "",
                                         .timestamp = time (NULL),
-                                        .version = "0.0.1" },
+                                        .difficulty_target
+                                        = BK_DEFAULT_DIFFICULTY_TARGET,
+                                        .nonce = 10 },
                .transactions_list = { t, u } });
 
   bn.to_string ();
@@ -265,17 +265,18 @@ test8 ()
       "916c15063443b8787a85f8f9091bebaded3c0aef8fa8d46031a5c74da65fd",
       "0x9665a13fece00de1f60183822d55ac180484ac1d");
 
-  Transaction t = { .from = "0x9665a13fece00de1f60183822d55ac180484ac1d",
-                    .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
-                    .gas_price = 50.0f,
-                    .gas_used = 2100.0f,
-                    .input_data = "",
-                    .nonce = 10,
-                    .status = TransactionStatusEnum::Pending,
-                    .symbol = "RS",
-                    .timestamp = time (NULL),
-                    .tr_fee = (2100 * 50) / 1000.0f,
-                    .value = 50 };
+  Transaction t;
+  t.from = "0x9665a13fece00de1f60183822d55ac180484ac1d";
+  t.to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40";
+  t.gas_price = 50.0f;
+  t.gas_used = 2100.0f;
+  t.input_data = "";
+  t.nonce = 10;
+  t.status = TransactionStatusEnum::Pending;
+  t.symbol = "RS";
+  t.timestamp = time (NULL);
+  t.tr_fee = (2100 * 50) / 1000.0f;
+  t.value = 21000000.0f;
 
   w.sign_transaction (t);
 
@@ -310,28 +311,30 @@ test9 ()
 
   BlockNetwork bn (w);
 
-  Transaction t = { .from = "0x9665a13fece00de1f60183822d55ac180484ac1d",
-                    .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
-                    .gas_price = 50.0f,
-                    .gas_used = 2100.0f,
-                    .input_data = "",
-                    .nonce = 10,
-                    .status = TransactionStatusEnum::Pending,
-                    .symbol = "RS",
-                    .timestamp = time (NULL),
-                    .tr_fee = (2100 * 50) / 1000.0f,
-                    .value = 50 };
+  Transaction t;
+  t.from = "0x9665a13fece00de1f60183822d55ac180484ac1d";
+  t.to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40";
+  t.gas_price = 50.0f;
+  t.gas_used = 2100.0f;
+  t.input_data = "";
+  t.nonce = 10;
+  t.status = TransactionStatusEnum::Pending;
+  t.symbol = "RS";
+  t.timestamp = time (NULL);
+  t.tr_fee = (2100 * 50) / 1000.0f;
+  t.value = 21000000.0f;
 
   w.sign_transaction (t);
   bn.add_transaction (t);
 
   bn.add_block ((Block){
-      .header = (BlockHeader){ .difficulty_target
-                               = bn.get_block (0).header.difficulty_target,
-                               .nonce = 10,
-                               .timestamp = time (NULL),
-                               .version = bn.get_block (0).header.version },
-  });
+      .header = (BlockHeader){
+          .version = bn.get_block (0).header.version,
+          .prev_hash = "",
+          .timestamp = time (NULL),
+          .difficulty_target = bn.get_block (0).header.difficulty_target,
+          .nonce = 10,
+      } });
 
   std::cout << bn.to_string ();
 
@@ -355,29 +358,31 @@ test10 ()
 
   BlockNetwork bn (w);
 
-  Transaction t = { .from = "0x9665a13fece00de1f60183822d55ac180484ac1d",
-                    .to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40",
-                    .gas_price = 50.0f,
-                    .gas_used = 2100.0f,
-                    .input_data = "",
-                    .nonce = 10,
-                    .status = TransactionStatusEnum::Pending,
-                    .symbol = "RS",
-                    .timestamp = time (NULL),
-                    .tr_fee = (2100 * 50) / 1000.0f,
-                    .value = 21000000.0f };
+  Transaction t;
+  t.from = "0x9665a13fece00de1f60183822d55ac180484ac1d";
+  t.to = "0xac96ccdbefc43a9efe8430ec9aa403f48ae1ad40";
+  t.gas_price = 50.0f;
+  t.gas_used = 2100.0f;
+  t.input_data = "";
+  t.nonce = 10;
+  t.status = TransactionStatusEnum::Pending;
+  t.symbol = "RS";
+  t.timestamp = time (NULL);
+  t.tr_fee = (2100 * 50) / 1000.0f;
+  t.value = 21000000.0f;
 
   t.hash ();
   w.sign_transaction (t);
   bn.add_transaction (t);
 
   bn.add_block ((Block){
-      .header = (BlockHeader){ .difficulty_target
-                               = bn.get_block (0).header.difficulty_target,
-                               .nonce = 10,
-                               .timestamp = time (NULL),
-                               .version = bn.get_block (0).header.version },
-  });
+      .header = (BlockHeader){
+          .version = bn.get_block (0).header.version,
+          .prev_hash = "",
+          .timestamp = time (NULL),
+          .difficulty_target = bn.get_block (0).header.difficulty_target,
+          .nonce = 10,
+      } });
 
   std::cout << bn.to_string ();
 

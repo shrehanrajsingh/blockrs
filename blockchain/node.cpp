@@ -64,7 +64,7 @@ Node::from_string (std::string jstr)
           std::stringstream ss;
           ss << *block_json;
 
-          dbg ("ss: " << ss.str ());
+          // dbg ("ss: " << ss.str ());
           Block *block = new Block;
           *block = Block::from_string (ss.str ());
 
@@ -90,14 +90,14 @@ Node::fetch_blocks_from_chain ()
       return;
     }
 
-  dbg ("info_resp: " << info_resp);
+  // dbg ("info_resp: " << info_resp);
 
   size_t bidx = info_resp.find ("\r\n\r\n");
   if (info_resp.find ("200 OK") > bidx)
     return;
 
   info_resp = info_resp.substr (bidx);
-  dbg ("json_info_resp: " << info_resp);
+  // dbg ("json_info_resp: " << info_resp);
 
   json_t jp = json_t::from_string (info_resp);
 
@@ -118,7 +118,7 @@ Node::fetch_blocks_from_chain ()
       std::stringstream ss;
       ss << *jv;
 
-      dbg ("jv_str: " << ss.str ());
+      // dbg ("jv_str: " << ss.str ());
 
       *bp = Block::from_string (ss.str ());
       blocks.push_back (bp);
@@ -175,12 +175,13 @@ Node::mine ()
     }
 
   Block nb;
-  nb.header = (BlockHeader){ .difficulty_target
-                             = last_block->header.difficulty_target,
-                             .nonce = static_cast<size_t> (nonce),
-                             .prev_hash = params["prev_hash"]->as_string (),
-                             .timestamp = time (NULL),
-                             .version = last_block->header.version };
+  nb.header = (BlockHeader){
+    .version = last_block->header.version,
+    .prev_hash = params["prev_hash"]->as_string (),
+    .timestamp = time (NULL),
+    .difficulty_target = last_block->header.difficulty_target,
+    .nonce = static_cast<size_t> (nonce),
+  };
 
   nb.transactions_list = tr_pending;
   int r = blocks.size (); /* index of newly added block */

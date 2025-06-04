@@ -4,6 +4,7 @@
 #pragma once
 
 #include "vec.hpp"
+#include <cstring>
 #include <iostream>
 
 namespace rs::util

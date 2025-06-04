@@ -2,62 +2,6 @@
 
 namespace rs::json
 {
-JsonObject &
-JsonObject::operator= (const JsonObject &rhs)
-{
-  if (this != &rhs)
-    {
-      type = rhs.type;
-      switch (rhs.type)
-        {
-        case JsonType::Array:
-          {
-            jarray = rhs.jarray;
-          }
-          break;
-        case JsonType::Boolean:
-          {
-            jbool = rhs.jbool;
-          }
-          break;
-        case JsonType::Float:
-          {
-            jfloat = rhs.jfloat;
-          }
-          break;
-        case JsonType::Integer:
-          {
-            jint = rhs.jint;
-          }
-          break;
-        case JsonType::NoType:
-          {
-          }
-          break;
-        case JsonType::Null:
-          {
-          }
-          break;
-        case JsonType::Object:
-          {
-            /* keep it this way to prevent recursion */
-            jobj = rhs.jobj;
-          }
-          break;
-        case JsonType::String:
-          {
-            jstr = rhs.jstr;
-          }
-          break;
-        default:
-          {
-          }
-          break;
-        }
-    }
-  return *this;
-}
-
 JsonContext::JsonContext () {}
 
 JsonContext::JsonContext (
@@ -93,7 +37,8 @@ operator<< (std::ostream &out, JsonObject &lhs)
     {
     case JsonType::Array:
       {
-        if (!lhs.jarray.size ())
+        const std::vector<JsonObject *> &arr = lhs.as_array ();
+        if (!arr.size ())
           {
             out << "[]";
           }
@@ -101,7 +46,7 @@ operator<< (std::ostream &out, JsonObject &lhs)
           {
             out << "[";
             bool first = true;
-            for (auto &item : lhs.jarray)
+            for (auto &item : arr)
               {
                 if (!first)
                   out << ", ";
@@ -114,17 +59,17 @@ operator<< (std::ostream &out, JsonObject &lhs)
       break;
     case JsonType::Boolean:
       {
-        out << (lhs.jbool ? "true" : "false");
+        out << (lhs.as_boolean () ? "true" : "false");
       }
       break;
     case JsonType::Float:
       {
-        out << lhs.jfloat;
+        out << lhs.as_float ();
       }
       break;
     case JsonType::Integer:
       {
-        out << lhs.jint;
+        out << lhs.as_integer ();
       }
       break;
     case JsonType::NoType:
@@ -137,14 +82,14 @@ operator<< (std::ostream &out, JsonObject &lhs)
       {
         out << "{";
         bool first = true;
-        out << *lhs.jobj;
+        out << *(lhs.as_object ());
         out << "}";
       }
       break;
     case JsonType::String:
       {
         out << "\"";
-        for (char c : lhs.jstr)
+        for (char c : lhs.as_string ())
           {
             switch (c)
               {
@@ -215,22 +160,19 @@ _parse_val (std::string &val)
 
   if (val == "true" || val == "false")
     {
-      jo->get_type () = JsonType::Boolean;
-      jo->jbool = val[0] == 't';
+      *jo = val[0] == 't';
     }
   else if (val == "null")
     {
-      jo->get_type () = JsonType::Null;
+      *jo = JsonObject (nullptr);
     }
   else if (val[0] == '\"')
     {
-      jo->get_type () = JsonType::String;
-      jo->jstr = val.substr (1, val.size () - 2);
+      *jo = val.substr (1, val.size () - 2);
     }
   else if (val[0] == '{')
     {
-      jo->get_type () = JsonType::Object;
-      jo->jobj = new JsonContext;
+      JsonContext *jobj = new JsonContext;
       std::string inner_content = val.substr (1, val.size () - 2);
       util::trim_string (inner_content);
 
@@ -303,7 +245,7 @@ _parse_val (std::string &val)
 
                   try
                     {
-                      (*jo->jobj)[key] = _parse_val (value);
+                      (*jobj)[key] = _parse_val (value);
                     }
                   catch (const std::exception &e)
                     {
@@ -333,13 +275,15 @@ _parse_val (std::string &val)
 
           try
             {
-              (*jo->jobj)[key] = _parse_val (value);
+              (*jobj)[key] = _parse_val (value);
             }
           catch (const std::exception &e)
             {
               std::cerr << e.what () << '\n';
             }
         }
+
+      *jo = jobj;
     }
   else if (val[0] == '[')
     {
@@ -426,8 +370,7 @@ _parse_val (std::string &val)
           buf += d;
         }
 
-      jo->get_type () = JsonType::Array;
-      jo->jarray = vls;
+      *jo = vls;
     }
   else
     {
@@ -457,13 +400,11 @@ _parse_val (std::string &val)
         {
           if (saw_dot)
             {
-              jo->get_type () = JsonType::Float;
-              jo->jfloat = atof (val.c_str ());
+              *jo = std::stof (val.c_str ());
             }
           else
             {
-              jo->get_type () = JsonType::Integer;
-              jo->jint = atoi (val.c_str ());
+              *jo = std::stoi (val.c_str ());
             }
         }
       else
@@ -656,6 +597,22 @@ JsonContext::from_string (std::string s)
 
       if (reading_val)
         val += c;
+    }
+
+  if (!key.empty () && !val.empty ())
+    {
+      util::trim_string (key);
+      key.erase (0, 1);
+      key.pop_back ();
+
+      try
+        {
+          r[key] = _parse_val (val);
+        }
+      catch (const std::exception &e)
+        {
+          std::cerr << e.what () << '\n';
+        }
     }
 
   return r;

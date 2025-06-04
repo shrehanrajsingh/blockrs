@@ -1,8 +1,7 @@
 #if !defined(HTTPHEADER_H)
 #define HTTPHEADER_H
 
-#include <iostream>
-#include <map>
+#include "../header.hpp"
 
 namespace rs::block
 {

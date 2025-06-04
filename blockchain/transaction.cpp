@@ -11,16 +11,16 @@ Transaction::hash ()
   J (j["status"]) = int (status);
   J (j["block_num"]) = int (block_num);
   J (j["timestamp"]) = int (timestamp);
-  J (j["from"]) = from;
-  J (j["to"]) = to;
+  J (j["from"]) = std::string (from);
+  J (j["to"]) = std::string (to);
   J (j["value"]) = value;
-  J (j["symbol"]) = symbol;
+  J (j["symbol"]) = std::string (symbol);
   J (j["gas_used"]) = gas_used;
   J (j["gas_price"]) = gas_price;
   J (j["tr_fee"]) = tr_fee;
   J (j["nonce"]) = int (nonce);
-  J (j["input_data"]) = input_data;
-  J (j["signature"]) = signature;
+  J (j["input_data"]) = std::string (input_data);
+  J (j["signature"]) = std::string (signature);
   J (j["is_cbt"]) = is_coinbase_transaction;
 
   std::string strj = j.to_string ();
@@ -39,17 +39,17 @@ Transaction::to_string ()
   J (j["status"]) = int (status);
   J (j["block_num"]) = int (block_num);
   J (j["timestamp"]) = int (timestamp);
-  J (j["from"]) = from;
-  J (j["to"]) = to;
+  J (j["from"]) = std::string (from);
+  J (j["to"]) = std::string (to);
   J (j["value"]) = int (value);
-  J (j["symbol"]) = symbol;
+  J (j["symbol"]) = std::string (symbol);
   J (j["gas_used"]) = int (gas_used);
   J (j["gas_price"]) = int (gas_price);
   J (j["tr_fee"]) = int (tr_fee);
   J (j["nonce"]) = int (nonce);
-  J (j["input_data"]) = input_data;
-  J (j["signature"]) = signature;
-  J (j["tr_hash"]) = tr_hash;
+  J (j["input_data"]) = std::string (input_data);
+  J (j["signature"]) = std::string (signature);
+  J (j["tr_hash"]) = std::string (tr_hash);
   J (j["is_cbt"]) = is_coinbase_transaction;
 
   return j.to_string ();
@@ -86,13 +86,21 @@ Transaction::to_string_sign ()
 {
   json::json_t j;
   J (j["nonce"]) = int (nonce);
-  J (j["to"]) = to;
+  J (j["to"]) = std::string (to);
   J (j["value"]) = value;
   J (j["gas_fee"]) = gas_price;
-  J (j["data"]) = input_data;
+  J (j["data"]) = std::string (input_data);
+
+  /**
+   * !This is a temporary fix
+   * coinbase transaction as string sometimes does not -- when parsed -- contin
+   * the "value" node, adding a "zbypass" key ('z' so that it is ordered below
+   * value)
+   */
+  J (j["zbypass"]) = 0;
 
   std::string js = j.to_string ();
-  dbg ("Transaction::to_string_sign(): " << js);
+  // dbg ("Transaction::to_string_sign(): " << js);
 
   return js;
 }

@@ -234,6 +234,8 @@ NodeServer::route_connect_to_chain (HttpRequest req)
   HttpResponse resp;
   json_t jreq = json_t::from_string (req.body);
 
+  // dbg ("req_body: " << req.body << "\njson_body: " << jreq.to_string ());
+
   if (!jreq.has_key ("url")) /* bnt_url */
     {
       resp.status_code = HttpStatusEnum::BadRequest;
@@ -290,8 +292,9 @@ NodeServer::route_connect_to_chain (HttpRequest req)
 
   std::string url_pass
       = BKRS_SERVER_URL + std::string (":") + std::to_string (get_port ());
-  std::string addnode_info
-      = fetch_POST (host, port, "/addnode", "{\"url\": \"" + url_pass + "\"}");
+  dbg ("url_pass: " << url_pass);
+  url_pass = "{\"url\":\"" + url_pass + "\"}";
+  std::string addnode_info = fetch_POST (host, port, "/addnode", url_pass);
 
   dbg ("connect response: " << addnode_info);
 
@@ -391,10 +394,10 @@ NodeServer::route_update (HttpRequest req)
       return resp;
     }
 
-  dbg ("req.body: " << req.body);
+  // dbg ("req.body: " << req.body);
   json_t ji = json_t::from_string (req.body);
 
-  dbg ("ji: " << ji.to_string ());
+  // dbg ("ji: " << ji.to_string ());
 
   // if (!ji.has_key ("chain_info"))
   //   {
@@ -500,6 +503,7 @@ NodeServer::route_wallet (HttpRequest req)
 HttpResponse
 NodeServer::route_wallet_sign (HttpRequest req)
 {
+  dbg ("inside /wallet/sign");
   HttpResponse resp;
 
   if (wallet == nullptr) /* this shouldn't be possible since the constructor
@@ -519,11 +523,14 @@ NodeServer::route_wallet_sign (HttpRequest req)
       return resp;
     }
 
+  dbg ("jw_req_body: " << req.body);
   json_t jw = json_t::from_string (req.body);
   dbg ("jw_str: " << jw.to_string ());
 
-  if (!jw.has_key ("nonce") || !jw.has_key ("to") || !jw.has_key ("value")
-      || !jw.has_key ("gas_fee") || !jw.has_key ("data"))
+  if (jw.has_key ("nonce") && jw.has_key ("to") && jw.has_key ("value")
+      && jw.has_key ("gas_fee") && jw.has_key ("data"))
+    ;
+  else
     {
       resp.status_code = HttpStatusEnum::BadRequest;
       resp.status_message = get_status_message (resp.status_code);

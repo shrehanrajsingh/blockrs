@@ -185,7 +185,7 @@ WalletServer::route_ws_info (HttpRequest req)
 HttpResponse
 WalletServer::route_ws_sign (HttpRequest req)
 {
-  dbg ("wallet/sign reqbody: " << req.body);
+  // dbg ("wallet/sign reqbody: " << req.body);
   json_t j = json_t::from_string (req.body);
 
   HttpResponse resp;
