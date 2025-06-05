@@ -409,7 +409,7 @@ _parse_val (std::string &val)
         }
       else
         {
-          throw std::invalid_argument ("Invalid JSON value: " + val);
+          throw std::invalid_argument ("Invalid JSON value: [(" + val + ")]");
         }
     }
 
@@ -421,6 +421,21 @@ JsonContext::from_string (std::string s)
 {
   util::trim_string (s);
   json_t r;
+
+  /**
+   * !Alert
+   * BUG:
+   * at times when passing JSON over a network
+   * certain unexpected characters might add at the
+   * end (for example, @ in my observation)
+   * As a loophole, I expect all JSON to be
+   * enclosed within {} so I will manually remove any
+   * such characters which might add
+   */
+
+  size_t fr_br = s.find_first_of ('{');
+  size_t ls_br = s.find_last_of ('}');
+  s = s.substr (fr_br, ls_br - fr_br + 1);
 
   size_t sl = s.size ();
   bool reading_key = true;

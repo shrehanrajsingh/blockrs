@@ -97,7 +97,7 @@ Transaction::to_string_sign ()
    * the "value" node, adding a "zbypass" key ('z' so that it is ordered below
    * value)
    */
-  J (j["zbypass"]) = 0;
+  // J (j["zbypass"]) = 0;
 
   std::string js = j.to_string ();
   // dbg ("Transaction::to_string_sign(): " << js);

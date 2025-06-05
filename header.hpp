@@ -53,13 +53,15 @@ namespace rs::util
 static void
 trim_string (std::string &s)
 {
-  while (s.front () == ' ' || s.front () == '\t' || s.front () == '\r'
-         || s.front () == '\n')
-    s.erase (0, 1);
+  auto start = s.find_first_not_of (" \t\n\r\f\v");
+  if (start == std::string::npos)
+    {
+      s.clear ();
+      return;
+    }
 
-  while (s.back () == ' ' || s.back () == '\t' || s.back () == '\r'
-         || s.back () == '\n')
-    s.pop_back ();
+  auto end = s.find_last_not_of (" \t\n\r\f\v");
+  s = s.substr (start, end - start + 1);
 }
 }
 

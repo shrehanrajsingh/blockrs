@@ -8,7 +8,7 @@
 #include "transaction.hpp"
 #include "wallet.hpp"
 
-#define BK_FETCHNODE_DELAY_S (5)
+#define BK_FETCHNODE_DELAY_S (2)
 
 namespace rs::block
 {

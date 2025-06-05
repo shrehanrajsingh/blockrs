@@ -74,7 +74,21 @@ test2 ()
   std::cout << *j["name"] << std::endl
             << *j["age"] << std::endl
             << *j["dob"] << std::endl
-            << *j["arr"];
+            << *j["arr"] << std::endl;
+
+  json_t j2;
+  J (j2["name"]) = "Shrehan";
+  J (j2["age"]) = 19;
+  J (j2["dob"]) = 190706;
+
+  std::cout << j2.to_string () << std::endl;
+
+  json_t j3 = json_t::from_string (
+      "{\"to\":\"iefiwgiwbiwfbjiwviwfjviwvw0934898492irr\",\"from\":"
+      "\"iefjiqmef9u1u328ry294r2ifiwfhwifwf\",\"nonce\":19,\"data\":\"Hello, "
+      "World!\",\"value\":20}");
+
+  std::cout << j3.to_string () << std::endl;
 }
 
 void

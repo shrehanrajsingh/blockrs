@@ -52,6 +52,13 @@ public:
   JsonObject (std::nullptr_t) : type (JsonType::Null), value (std::monostate{})
   {
   }
+  JsonObject (const char *_Val)
+      : type (JsonType::String), value (std::string (_Val))
+  {
+  }
+  JsonObject (char *_Val) : type (JsonType::String), value (std::string (_Val))
+  {
+  }
   JsonObject (std::string _Val) : type (JsonType::String), value (_Val) {}
   JsonObject (int _Val) : type (JsonType::Integer), value (_Val) {}
   JsonObject (bool _Val) : type (JsonType::Boolean), value (_Val) {}
