@@ -47,8 +47,6 @@ cd blockrs
 
 ### Docker Installation
 
-### Docker Installation
-
 The simplest way to get started with BlockRS is using Docker, which provides a consistent environment across all platforms.
 
 1. **Build the Docker image:**
