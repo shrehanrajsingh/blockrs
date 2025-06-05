@@ -47,7 +47,27 @@ cd blockrs
 
 ### Docker Installation
 
-*Documentation forthcoming*
+### Docker Installation
+
+The simplest way to get started with BlockRS is using Docker, which provides a consistent environment across all platforms.
+
+1. **Build the Docker image:**
+        ```
+        docker build -t blockrs .
+        ```
+
+2. **Run the container with required ports:**
+        ```
+        docker run -it -p 8000:8000 -p 8100:8100 -p 9000:9000 blockrs
+        ```
+
+> **Important:** BlockRS requires at least three exposed ports to run a complete environment:
+> - Port `8000`: Blockchain server
+> - Port `8100`: Node server
+> - Port `9000`: Wallet server
+>
+> You can modify these port mappings as needed for your environment.
+> Refer to `docs/video` for a detailed installation guide.
 
 ### Manual Installation
 
