@@ -1025,7 +1025,31 @@ BlocknetServer::fetch_nodes ()
       for (Block *&b : mlc_node->get_blocks ())
         {
           for (Transaction &i : b->transactions_list)
-            i.status = TransactionStatusEnum::Success;
+            {
+              bool saw_pt = false;
+              size_t pt_idx = 0;
+
+              for (Transaction &j : blockchain->get_pending_transactions ())
+                {
+                  /* could use some optimization here */
+                  if (i.to_string () == j.to_string ())
+                    {
+                      saw_pt = true;
+                      break;
+                    }
+
+                  pt_idx++;
+                }
+
+              if (saw_pt)
+                {
+                  blockchain->get_pending_transactions ().erase (
+                      blockchain->get_pending_transactions ().begin ()
+                      + pt_idx);
+                }
+
+              i.status = TransactionStatusEnum::Success;
+            }
 
           nchain.push_back (*b);
         }
