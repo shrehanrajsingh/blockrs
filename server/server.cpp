@@ -65,8 +65,11 @@ public:
 
 std::string
 fetch_GET (const std::string &host, int port, const std::string &path,
-           std::string body)
+           std::string body, std::string rt)
 {
+  if (!rt.size () && path.size ())
+    rt = path;
+
   ScopedSocket sockfd;
 
   struct addrinfo hints{}, *res, *p;
@@ -74,7 +77,7 @@ fetch_GET (const std::string &host, int port, const std::string &path,
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
-  dbg ("Host: " << host << "\nPort: " << port << "\nPath: " << path);
+  dbg ("Host: " << host << "\nPort: " << port << "\nPath: " << rt);
   size_t skip_http = 0;
 
   if (host.find ("http") == 0)
@@ -119,7 +122,7 @@ fetch_GET (const std::string &host, int port, const std::string &path,
   //   server->h_length);
 
   std::ostringstream oss;
-  oss << "GET " << path << " HTTP/1.1\r\n"
+  oss << "GET " << rt << " HTTP/1.1\r\n"
       << "Host: " << host << "\r\n"
       << "Connection: close\r\n"
       << "Content-Length: " << body.size () << "\r\n\r\n"
@@ -142,8 +145,11 @@ fetch_GET (const std::string &host, int port, const std::string &path,
 
 std::string
 fetch_POST (const std::string &host, int port, const std::string &path,
-            std::string body)
+            std::string body, std::string rt)
 {
+  if (!rt.size () && path.size ())
+    rt = path;
+
   ScopedSocket sockfd;
 
   struct addrinfo hints{}, *res, *p;
@@ -151,7 +157,7 @@ fetch_POST (const std::string &host, int port, const std::string &path,
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
-  dbg ("Host: " << host << "\nPort: " << port << "\nPath: " << path);
+  dbg ("Host: " << host << "\nPort: " << port << "\nPath: " << rt);
   size_t skip_http = 0;
 
   if (host.find ("http") == 0)
@@ -196,7 +202,7 @@ fetch_POST (const std::string &host, int port, const std::string &path,
   //   server->h_length);
 
   std::ostringstream oss;
-  oss << "POST " << path << " HTTP/1.1\r\n"
+  oss << "POST " << rt << " HTTP/1.1\r\n"
       << "Host: " << host << "\r\n"
       << "Connection: close\r\n"
       << "Content-Length: " << body.size () << "\r\n\r\n"
@@ -219,15 +225,15 @@ fetch_POST (const std::string &host, int port, const std::string &path,
 
 std::string
 fetch (const std::string &host, int port, const std::string &req,
-       const std::string &path, std::string body)
+       const std::string &path, std::string body, std::string rt)
 {
   if (req == "GET")
     {
-      return fetch_GET (host, port, path, body);
+      return fetch_GET (host, port, path, body, rt);
     }
   else if (req == "POST")
     {
-      return fetch_POST (host, port, path, body);
+      return fetch_POST (host, port, path, body, rt);
     }
   /* else if... */
 
@@ -236,7 +242,7 @@ fetch (const std::string &host, int port, const std::string &req,
 
 std::string
 fetch (const std::string &url, const std::string &req, const std::string &path,
-       std::string body)
+       std::string body, std::string rt)
 {
   size_t colon_pos = url.rfind (':');
 
@@ -246,9 +252,26 @@ fetch (const std::string &url, const std::string &req, const std::string &path,
   std::string host = url.substr (0, colon_pos);
   std::string port_str = url.substr (colon_pos + 1);
 
+  size_t slash_pos = port_str.find ('/');
+  rt = path;
+
+  if (slash_pos != std::string::npos)
+    {
+      /* somelink:someport/someroute */
+      if (rt.size () && rt.front () != '/')
+        rt = '/' + rt;
+
+      rt = port_str.substr (slash_pos + 1) + rt;
+
+      if (rt.size () && rt.front () != '/')
+        rt = '/' + rt;
+
+      port_str = port_str.substr (0, slash_pos);
+    }
+
   int port = std::stoi (port_str);
 
-  return fetch (host, port, req, path, body);
+  return fetch (host, port, req, path, body, rt);
 }
 
 #endif

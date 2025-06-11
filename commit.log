@@ -1,0 +1,15 @@
+# Commit Log
+
+## 11-06-2025: Transaction Validation Enhancement
+- Transactions can now be rejected based on whether sufficient funds exist in wallet
+- Fund calculation implemented using chain data
+- Added validation layer to prevent invalid transactions
+
+## 11-06-2025: Network Connectivity Improvements
+- fetch() routine completely reworked to support links with routes and ports
+- Enhanced API communication flexibility
+- Improved error handling for network requests
+
+## 11-06-2025: Documentation Updates
+- Whitepaper development is underway
+- Documenting core architecture and technical specifications

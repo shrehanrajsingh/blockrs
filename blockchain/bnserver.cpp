@@ -435,7 +435,7 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
       }
     </style>
   </head>
-  <body>
+  <body class="light-mode">
     <div class="container">
       <button class="theme-toggle" id="theme-toggle">Toggle Dark Mode</button>
       <h1>New Blockchain Transaction</h1>
@@ -511,10 +511,10 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
         </div>
 
         <div class="form-group">
-          <label for="memo">Memo/Message (optional)</label>
+          <label for="data">Memo/Message (optional)</label>
           <textarea
-            id="memo"
-            name="memo"
+            id="data"
+            name="data"
             rows="3"
             placeholder="Enter an optional message with this transaction"
           ></textarea>
@@ -668,9 +668,10 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
             nt.to = jresp["recipient"]->as_string ();
             nt.gas_price = GAS_PRICE_DEFAULT;
             nt.gas_used = 2100;
-            nt.input_data = jresp["memo"]->as_string ();
+            nt.input_data = jresp["data"]->as_string ();
             nt.tr_fee = std::stof (jresp["fee"]->as_string ());
             nt.value = std::stof (jresp["amount"]->as_string ());
+            nt.symbol = "RS";
           }
         catch (const std::exception &e)
           {
@@ -678,6 +679,49 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
             resp.status_code = HttpStatusEnum::InternalServerError;
             resp.status_message = get_status_message (resp.status_code);
             resp.body = JSON_RAW ({ "error" : "Internal Server Error" });
+
+            HttpHeader content_type
+                = parse_header ("Content-Type: application/json");
+            HttpHeader content_length = parse_header (
+                "Content-Length: " + std::to_string (resp.body.size ()));
+
+            resp.head_map[HttpHeaderEnum::ContentType] = content_type;
+            resp.head_map[HttpHeaderEnum::ContentLength] = content_length;
+
+            return resp;
+          }
+
+        if (blockchain == nullptr)
+          {
+            resp.status_code = HttpStatusEnum::BadGateway;
+            resp.status_message = get_status_message (resp.status_code);
+            resp.body = JSON_RAW ({
+              "error" : "This BlocknetServer does not have a blockchain "
+                        "associated with it"
+            });
+
+            HttpHeader content_type
+                = parse_header ("Content-Type: application/json");
+            HttpHeader content_length = parse_header (
+                "Content-Length: " + std::to_string (resp.body.size ()));
+
+            resp.head_map[HttpHeaderEnum::ContentType] = content_type;
+            resp.head_map[HttpHeaderEnum::ContentLength] = content_length;
+
+            return resp;
+          }
+
+        float am = blockchain->get_coins_in_wallet (nt.from);
+
+        if (am < nt.value)
+          {
+            resp.status_code = HttpStatusEnum::OK;
+            resp.status_message = get_status_message (resp.status_code);
+            resp.body = ("{\"message\": \"Transaction was rejected due to "
+                         "insufficient funds.\", "
+                         "\"status\": \"Rejected\"}");
+
+            blockchain->add_rejected_transaction (nt);
 
             HttpHeader content_type
                 = parse_header ("Content-Type: application/json");
@@ -710,11 +754,17 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
 
         // dbg ("ws_resp: " << ws_resp);
 
+        // dbg ("jresp: " << jresp.to_string ());
+
         if (ws_resp.find ("200 OK") == std::string::npos)
           {
+            dbg ("ws_resp invalid: " << ws_resp);
             resp.status_code = HttpStatusEnum::InternalServerError;
             resp.status_message = get_status_message (resp.status_code);
-            resp.body = JSON_RAW ({ "error" : "Internal Server Error" });
+            resp.body = JSON_RAW ({
+              "error" : "Internal Server Error",
+              "additional_info" : "Invalid Response Code"
+            });
 
             HttpHeader content_type
                 = parse_header ("Content-Type: application/json");
@@ -733,9 +783,13 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
 
         if (!jws.has_key ("sign"))
           {
+            dbg ("jws invalid: " << jws.to_string ());
             resp.status_code = HttpStatusEnum::InternalServerError;
             resp.status_message = get_status_message (resp.status_code);
-            resp.body = JSON_RAW ({ "error" : "Internal Server Error" });
+            resp.body = JSON_RAW ({
+              "error" : "Internal Server Error",
+              "additional_info" : "Invalid Response Data"
+            });
 
             HttpHeader content_type
                 = parse_header ("Content-Type: application/json");
@@ -753,26 +807,6 @@ BlocknetServer::route_bn_transaction_new (HttpRequest req)
         nt.hash ();
 
         dbg ("nt.signature: " << smsg << "\nnt.hash: " << nt.tr_hash);
-
-        if (blockchain == nullptr)
-          {
-            resp.status_code = HttpStatusEnum::BadGateway;
-            resp.status_message = get_status_message (resp.status_code);
-            resp.body = JSON_RAW ({
-              "error" : "This BlocknetServer does not have a blockchain "
-                        "associated with it"
-            });
-
-            HttpHeader content_type
-                = parse_header ("Content-Type: application/json");
-            HttpHeader content_length = parse_header (
-                "Content-Length: " + std::to_string (resp.body.size ()));
-
-            resp.head_map[HttpHeaderEnum::ContentType] = content_type;
-            resp.head_map[HttpHeaderEnum::ContentLength] = content_length;
-
-            return resp;
-          }
 
         blockchain->add_transaction (nt);
         blockchain->verify_transactions ();
@@ -1054,108 +1088,129 @@ BlocknetServer::fetch_nodes ()
           nchain.push_back (*b);
         }
 
+      std::vector<Block> last_chain = blockchain->get_chain ();
       blockchain->get_chain () = nchain;
 
-      for (Node *&i : nodes)
-        {
-          if (i == mlc_node)
-            {
-              if (!nchain.size ())
-                {
-                  dbg ("nchain.size() = 0");
-                  continue;
-                }
+      {
+        if (!nchain.size ())
+          {
+            dbg ("nchain.size() = 0");
+            goto l1;
+          }
 
-              /* add coinbase transaction */
-              std::string winfo;
+        /* add coinbase transaction */
+        std::string winfo;
 
-              try
-                {
-                  winfo = fetch (i->get_ns_url (), "GET", "/wallet");
-                }
-              catch (const std::exception &e)
-                {
-                  dbg ("fetch wallet error: ");
-                  std::cerr << e.what () << '\n';
-                  continue;
-                }
+        try
+          {
+            winfo = fetch (mlc_node->get_ns_url (), "GET", "/wallet");
+          }
+        catch (const std::exception &e)
+          {
+            dbg ("fetch wallet error: ");
+            std::cerr << e.what () << '\n';
+            goto l1;
+          }
 
-              size_t bidx = winfo.find ("\r\n\r\n");
+        size_t bidx = winfo.find ("\r\n\r\n");
 
-              if (winfo.find ("200 OK") > bidx)
-                {
-                  dbg ("wallet response error: ");
-                  continue;
-                }
+        if (winfo.find ("200 OK") > bidx)
+          {
+            dbg ("wallet response error: ");
+            goto l1;
+          }
 
-              winfo = winfo.substr (bidx + 1);
-              json_t jwi = json_t::from_string (winfo);
+        winfo = winfo.substr (bidx + 1);
+        json_t jwi = json_t::from_string (winfo);
 
-              if (!jwi.has_key ("address"))
-                {
-                  dbg ("no address key: ");
-                  continue;
-                }
+        if (!jwi.has_key ("address"))
+          {
+            dbg ("no address key: ");
+            goto l1;
+          }
 
-              std::string addr = jwi["address"]->as_string ();
+        float amt = 21;
 
-              Transaction nt;
-              nt.from = blockchain->owner;
-              nt.to = addr;
-              nt.gas_price = GAS_PRICE_DEFAULT;
-              nt.gas_used = 2100;
-              nt.input_data = "Transfer of currency value 21 &RS only as a "
-                              "token for adding a block";
-              nt.value = 21;
-              nt.nonce = 19;
-              nt.timestamp = time (NULL);
-              nt.tr_fee = 105;
-              nt.is_coinbase_transaction = true;
-              nt.block_num = nchain.size () - 1;
+        for (size_t j = last_chain.size ();
+             j < mlc_node->get_blocks ().size (); j++)
+          {
+            for (Transaction &t :
+                 mlc_node->get_blocks ()[j]->transactions_list)
+              amt += t.tr_fee;
+          }
 
-              std::string sign_tr;
+        std::string addr = jwi["address"]->as_string ();
 
-              try
-                {
-                  std::string ds = nt.to_string_sign ();
-                  dbg ("ds: " << ds);
-                  sign_tr
-                      = fetch (i->get_ns_url (), "POST", "/wallet/sign", ds);
-                }
-              catch (const std::exception &e)
-                {
-                  dbg ("/wallet/sign error");
-                  std::cerr << e.what () << '\n';
-                  continue;
-                }
+        Transaction nt;
+        nt.from = blockchain->owner;
+        nt.to = addr;
+        nt.gas_price = GAS_PRICE_DEFAULT;
+        nt.gas_used = 2100;
+        nt.input_data = "Transfer of currency value 21 &RS only as a "
+                        "token for adding a block";
+        nt.value = amt;
+        nt.nonce = 19;
+        nt.timestamp = time (NULL);
+        nt.tr_fee = 105;
+        nt.is_coinbase_transaction = true;
+        nt.block_num = nchain.size () - 1;
+        nt.symbol = "RS";
 
-              bidx = sign_tr.find ("\r\n\r\n");
+        std::string sign_tr;
 
-              if (sign_tr.find ("200 OK") > bidx)
-                {
-                  dbg ("/wallet/sign response error");
-                  dbg ("sign_tr: " << sign_tr);
-                  continue;
-                }
+        try
+          {
+            std::string ds = nt.to_string_sign ();
+            dbg ("ds: " << ds);
+            // std::string escaped_ds;
+            // escaped_ds.reserve (ds.size () * 2);
 
-              sign_tr = sign_tr.substr (bidx + 1);
-              json_t jstr = json_t::from_string (sign_tr);
+            // for (char c : ds)
+            //   {
+            //     if (c == '"')
+            //       escaped_ds += "\\\"";
+            //     else
+            //       escaped_ds += c;
+            //   }
 
-              if (!jstr.has_key ("sign"))
-                {
-                  dbg ("no 'sign' key");
-                  continue;
-                }
+            // dbg ("escaped_ds: " << escaped_ds);
+            sign_tr = fetch (mlc_node->get_ns_url (), "POST", "/wallet/sign",
+                             "{\"message\":\"" + ds + "\"}");
+          }
+        catch (const std::exception &e)
+          {
+            dbg ("/wallet/sign error");
+            std::cerr << e.what () << '\n';
+            goto l1;
+          }
 
-              std::string sgmsg = jstr["sign"]->to_string ();
-              nt.signature = sgmsg;
-              nt.hash ();
+        bidx = sign_tr.find ("\r\n\r\n");
 
-              dbg ("pushing cbt");
-              blockchain->get_chain ().back ().transactions_list.push_back (
-                  nt);
-            }
-        }
+        if (sign_tr.find ("200 OK") > bidx)
+          {
+            dbg ("/wallet/sign response error");
+            dbg ("sign_tr: " << sign_tr);
+            goto l1;
+          }
+
+        sign_tr = sign_tr.substr (bidx + 1);
+        json_t jstr = json_t::from_string (sign_tr);
+
+        if (!jstr.has_key ("sign"))
+          {
+            dbg ("no 'sign' key");
+            goto l1;
+          }
+
+        std::string sgmsg = jstr["sign"]->to_string ();
+        nt.signature = sgmsg;
+        nt.hash ();
+
+        dbg ("pushing cbt");
+        blockchain->get_chain ().back ().transactions_list.push_back (nt);
+      }
+
+    l1:;
 
       for (Node *&i : nodes)
         {

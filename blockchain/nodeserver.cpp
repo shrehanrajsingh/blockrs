@@ -524,8 +524,27 @@ NodeServer::route_wallet_sign (HttpRequest req)
     }
 
   dbg ("jw_req_body: " << req.body);
-  json_t jw = json_t::from_string (req.body);
-  dbg ("jw_str: " << jw.to_string ());
+  json_t jwr = json_t::from_string (req.body);
+  dbg ("jw_str: " << jwr.to_string ());
+
+  std::string jwmsg = jwr["message"]->as_string ();
+  // jwmsg.erase (std::remove (jwmsg.begin (), jwmsg.end (), '\\'), jwmsg.end
+  // ());
+
+  std::string::size_type pos = 0;
+  while ((pos = jwmsg.find ("\\\"", pos)) != std::string::npos)
+    {
+      jwmsg.replace (pos, 2, "\"");
+      pos += 1; // Move past the replacement
+    }
+
+  json_t jw = json_t::from_string (jwmsg);
+
+  dbg ("jw has_key nonce: "
+       << jw.has_key ("nonce") << "\njw has_key to: " << jw.has_key ("to")
+       << "\njw has_key value: " << jw.has_key ("value")
+       << "\njw has_key gas_fee: " << jw.has_key ("gas_fee")
+       << "\njw has_key data: " << jw.has_key ("data"));
 
   if (jw.has_key ("nonce") && jw.has_key ("to") && jw.has_key ("value")
       && jw.has_key ("gas_fee") && jw.has_key ("data"))

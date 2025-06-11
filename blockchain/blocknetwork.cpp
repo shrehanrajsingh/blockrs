@@ -345,4 +345,38 @@ end:
   return b;
 }
 
+float
+BlockNetwork::get_coins_in_wallet (std::string _Addr)
+{
+  float amount = 0.0f; /* we start off with int to account for any underflow */
+  for (Block &b : chain)
+    {
+      for (Transaction &t : b.transactions_list)
+        {
+          if (t.from == _Addr)
+            amount -= t.value;
+          else if (t.to == _Addr)
+            amount += t.value;
+        }
+    }
+
+  return amount;
+}
+
+void
+BlockNetwork::add_rejected_transaction (Transaction &nt)
+{
+  get_rejected_transactions ().push_back (nt);
+  get_rejected_transactions ().back ().status
+      = TransactionStatusEnum::Rejected;
+}
+
+void
+BlockNetwork::add_rejected_transaction (Transaction &&nt)
+{
+  get_rejected_transactions ().push_back (std::move (nt));
+  get_rejected_transactions ().back ().status
+      = TransactionStatusEnum::Rejected;
+}
+
 } // namespace rs::block

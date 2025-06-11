@@ -132,6 +132,9 @@ public:
   void add_transaction (Transaction &);
   void add_transaction (Transaction &&);
 
+  void add_rejected_transaction (Transaction &);
+  void add_rejected_transaction (Transaction &&);
+
   void verify_transactions ();
 
   bool valid_chain ();
@@ -140,6 +143,18 @@ public:
   Block &get_block (size_t);      /* from block_num */
 
   std::string to_string ();
+
+  /**
+   * Traverse the blockchain to find how
+   * much `_Addr` owns.
+   * In the chain, check every transaction,
+   * 1) If "from" == _Addr, reduce the amount
+   * 2) If "to" == _Addr, add to amount
+   * NOTE: coinbase transactions also fall under the above
+   * conditions
+   * @param _Addr wallet address
+   */
+  float get_coins_in_wallet (std::string _Addr);
 
   friend class BlocknetServer;
 
